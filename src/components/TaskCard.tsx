@@ -159,6 +159,14 @@ export function TaskCard({
     onReminderChanged?.();
   };
 
+  const handleSnoozeReminder = async (minutes: number) => {
+    await window.electronAPI.snoozeReminder(task.id, minutes);
+    const labels: Record<number, string> = { 5: '۵', 10: '۱۰', 30: '۳۰' };
+    showToast(`⏳ ${labels[minutes] || minutes} دقیقه بعد دوباره یادآوری می‌شود`, 'info');
+    refreshCurrentView();
+    onReminderChanged?.();
+  };
+
   const handleToggleSubtask = async (subtaskId: string) => {
     if (task.linked_id) {
       await window.electronAPI.toggleSubtask(task.id, subtaskId);
@@ -221,6 +229,9 @@ export function TaskCard({
 
   const effectiveReminder = reminderAt ?? (task as any).reminder ?? null;
   const reminderLabel = formatReminderLocalized(effectiveReminder, settings.calendarType);
+  const reminderOverdue = !!effectiveReminder &&
+    task.status !== 'done' &&
+    new Date(effectiveReminder).getTime() <= Date.now();
   const accent = task.color || fallbackAccent(task.id);
   const onColor = pickOnColor(accent);
   const customBorder = borderColor !== 'border-border/50';
@@ -383,6 +394,23 @@ export function TaskCard({
           {showColorPicker && (
             <div className="flex items-center gap-2 mb-2 px-1 pt-2 border-t border-border/30" onClick={(e) => e.stopPropagation()}>
               <ColorSwatches value={task.color || ''} onPick={handlePickColor} />
+            </div>
+          )}
+
+          {reminderOverdue && (
+            <div className="flex items-center gap-1.5 flex-wrap pt-2 mt-1 border-t border-amber-500/30" onClick={(e) => e.stopPropagation()}>
+              <span className="text-[11px] text-amber-500 flex items-center gap-1">
+                <Clock className="w-3 h-3" /> یادآوری عقب افتاد:
+              </span>
+              {[5, 10, 30].map(m => (
+                <button
+                  key={m}
+                  onClick={() => handleSnoozeReminder(m)}
+                  className="px-2 py-1 rounded-lg bg-amber-500/10 border border-amber-500/25 text-[11px] text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition-colors"
+                >
+                  {m === 5 ? '۵' : m === 10 ? '۱۰' : '۳۰'} دقیقه بعد
+                </button>
+              ))}
             </div>
           )}
 

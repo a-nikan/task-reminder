@@ -208,6 +208,15 @@ export function TaskDetailPanel() {
     reloadAll();
   };
 
+  const handleSnoozeReminder = async (minutes: number) => {
+    await window.electronAPI.snoozeReminder(task.id, minutes);
+    const r = await window.electronAPI.getReminder(task.id);
+    setActiveReminder(r);
+    const labels: Record<number, string> = { 5: '۵', 10: '۱۰', 30: '۳۰' };
+    showToast(`⏳ ${labels[minutes] || minutes} دقیقه بعد دوباره یادآوری می‌شود`, 'info');
+    reloadAll();
+  };
+
   const subtaskProgress = subtasks.length > 0
     ? Math.round((subtasks.filter(s => s.completed).length / subtasks.length) * 100)
     : 0;
@@ -312,11 +321,26 @@ export function TaskDetailPanel() {
             )}
           </div>
           {activeReminder && !showReminderEditor ? (
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-amber-500">
-                {formatReminderLocalized(activeReminder.snoozed_until || activeReminder.remind_at, settings.calendarType)}
-              </span>
-              <button onClick={handleCancelReminder} className="text-[11px] text-destructive hover:underline">لغو</button>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-amber-500">
+                  {formatReminderLocalized(activeReminder.snoozed_until || activeReminder.remind_at, settings.calendarType)}
+                </span>
+                <button onClick={handleCancelReminder} className="text-[11px] text-destructive hover:underline">لغو</button>
+              </div>
+              {new Date(activeReminder.snoozed_until || activeReminder.remind_at).getTime() <= Date.now() && (
+                <div className="flex gap-1.5">
+                  {[5, 10, 30].map(m => (
+                    <button
+                      key={m}
+                      onClick={() => handleSnoozeReminder(m)}
+                      className="flex-1 py-1 rounded-lg bg-amber-500/10 border border-amber-500/25 text-[11px] text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition-colors"
+                    >
+                      {m === 5 ? '۵' : m === 10 ? '۱۰' : '۳۰'} دقیقه بعد
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           ) : showReminderEditor ? (
             <div className="space-y-2">

@@ -18,6 +18,7 @@ import { NewTaskModal } from './components/NewTaskModal';
 import { EditTaskModal } from './components/EditTaskModal';
 import { CommandPalette } from './components/CommandPalette';
 import { Toast } from './components/Toast';
+import { ReminderAlert } from './components/ReminderAlert';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { Onboarding } from './components/Onboarding';
 
@@ -45,8 +46,20 @@ export default function App() {
       setShowNewTaskForm(true);
     });
 
-    window.electronAPI.onNotificationAction((data) => {
-      showToast(`⏰ یادآوری: ${data.title}`, 'info');
+    window.electronAPI.onNotificationAction(async (data) => {
+      let popped = false;
+      try {
+        const rem = await window.electronAPI.getReminder(data.taskId);
+        const effective = rem ? (rem.snoozed_until || rem.remind_at) : null;
+        const native = typeof (window as any).Capacitor !== 'undefined' && !!(window as any).Capacitor.isNativePlatform?.();
+        if (!native && rem && effective && new Date(effective).getTime() <= Date.now() + 5000) {
+          useStore.getState().pushReminderAlert({ taskId: data.taskId, title: data.title, remindAt: effective });
+          popped = true;
+        }
+      } catch {
+        // fall through to toast
+      }
+      if (!popped) showToast(`⏰ یادآوری: ${data.title}`, 'info');
       refreshCurrentView();
     });
 
@@ -103,6 +116,7 @@ export default function App() {
       {showEditTaskForm && <EditTaskModal />}
       {showCommandPalette && <CommandPalette />}
       <Toast />
+      <ReminderAlert />
       <ConfirmDialog />
     </div>
   );

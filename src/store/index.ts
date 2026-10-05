@@ -137,6 +137,10 @@ interface AppState {
   showToast: (message: string, type?: 'success' | 'error' | 'info', undoable?: boolean) => void;
   hideToast: () => void;
 
+  reminderAlerts: { taskId: string; title: string; remindAt: string }[];
+  pushReminderAlert: (alert: { taskId: string; title: string; remindAt: string }) => void;
+  popReminderAlert: () => void;
+
   undoStack: { tasks: Task[]; action: string }[];
   pushUndo: (tasks: Task | Task[], action: string) => void;
   popUndo: () => { tasks: Task[]; action: string } | undefined;
@@ -288,6 +292,13 @@ export const useStore = create<AppState>((set, get) => ({
     }, 6000);
   },
   hideToast: () => set({ toast: null }),
+
+  reminderAlerts: [],
+  pushReminderAlert: (alert) => {
+    if (get().reminderAlerts.some(a => a.taskId === alert.taskId)) return;
+    set({ reminderAlerts: [...get().reminderAlerts, alert] });
+  },
+  popReminderAlert: () => set({ reminderAlerts: get().reminderAlerts.slice(1) }),
 
   undoStack: [],
   pushUndo: (tasks, action) => {

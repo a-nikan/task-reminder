@@ -65,9 +65,19 @@ export function setupNotifications(mainWindow: BrowserWindow | null): void {
   ipcMain.handle('reminder:snooze', (_event, taskId: string, minutes: number) => {
     const db = getDatabase();
     const newTime = new Date(Date.now() + minutes * 60 * 1000).toISOString();
-    db.reminders.forEach(r => { if (r.task_id === taskId && !r.dismissed) r.snoozed_until = newTime; });
+    db.reminders.forEach(r => {
+      if (r.task_id === taskId && !r.dismissed) {
+        r.snoozed_until = newTime;
+        r.fired_at = null;
+      }
+    });
+    const task = db.tasks.find((t: any) => t.id === taskId);
+    if (task) {
+      task.reminder = newTime;
+      task.updated_at = new Date().toISOString();
+    }
     saveDatabase();
-    return { success: true };
+    return { success: true, snoozed_until: newTime };
   });
 }
 
@@ -75,33 +85,49 @@ function checkReminders(mainWindow: BrowserWindow | null): void {
   try {
     const db = getDatabase();
     const now = new Date().toISOString();
+    const nowMs = Date.now();
+    const STALE_MS = 24 * 60 * 60 * 1000;
 
     const pendingReminders = db.reminders.filter(r =>
       !r.dismissed &&
+      !r.fired_at &&
       (!r.snoozed_until || r.snoozed_until <= now) &&
       r.remind_at <= now
     );
 
+    let dirty = false;
     for (const reminder of pendingReminders) {
       const task = db.tasks.find(t => t.id === reminder.task_id);
+      const effective = reminder.snoozed_until || reminder.remind_at;
+      const overdueMs = nowMs - new Date(effective).getTime();
       if (task && !task.archived && task.status !== 'done') {
-        const when = formatReminderTime(reminder.remind_at, (db.settings as any)?.calendarType);
+        if (overdueMs > STALE_MS) {
+          reminder.dismissed = 1;
+          (task as any).reminder = null;
+          (task as any).updated_at = now;
+          dirty = true;
+          continue;
+        }
+        const when = formatReminderTime(effective, (db.settings as any)?.calendarType);
         showTaskNotification(
           mainWindow,
           `⏰ ${task.title}`,
           `یادآوری تسک${when ? `\n${when}` : ''}${task.date ? `\nتاریخ تسک: ${formatTaskDate(task.date, (db.settings as any)?.calendarType)}` : ''}${task.time ? ` ساعت ${task.time}` : ''}`,
           task.id
         );
-        reminder.dismissed = 1;
-        (task as any).reminder = null;
-        (task as any).updated_at = new Date().toISOString();
+        reminder.fired_at = now;
+        dirty = true;
         mainWindow?.webContents.send('notification:action', { taskId: task.id, reminderId: reminder.id, title: task.title });
       } else {
-        // Task done/archived/deleted -> dismiss silently
         reminder.dismissed = 1;
+        if (task) {
+          (task as any).reminder = null;
+          (task as any).updated_at = now;
+        }
+        dirty = true;
       }
     }
-    if (pendingReminders.length > 0) saveDatabase();
+    if (dirty) saveDatabase();
   } catch (error) {
     console.error('Error checking reminders:', error);
   }

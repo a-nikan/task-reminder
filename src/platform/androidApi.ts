@@ -67,6 +67,25 @@ async function initialize(): Promise<void> {
   await save();
 
   await ensurePermission();
+  let actionsOk = false;
+  try {
+    await LocalNotifications.registerActionTypes({
+      types: [
+        {
+          id: 'reminder-snooze',
+          actions: [
+            { id: 'snooze_5', title: '۵ دقیقه بعد' },
+            { id: 'snooze_10', title: '۱۰ دقیقه بعد' },
+            { id: 'snooze_30', title: '۳۰ دقیقه بعد' },
+          ],
+        },
+      ],
+    });
+    actionsOk = true;
+  } catch {
+    // action buttons not supported on this device
+  }
+  actionsEnabled = actionsOk;
   await rescheduleAll();
   await registerListeners();
 }
@@ -107,17 +126,26 @@ async function ensurePermission(): Promise<boolean> {
   }
 }
 
+const REMINDER_STALE_MS = 24 * 60 * 60 * 1000;
+let actionsEnabled = false;
+
 function dismissPastDue(): void {
   if (!db) return;
   const now = new Date().toISOString();
+  const nowMs = Date.now();
   for (const r of db.reminders) {
-    if (!r.dismissed && (r.snoozed_until || r.remind_at) <= now) {
-      r.dismissed = 1;
-      const task = db.tasks.find(t => t.id === r.task_id);
-      if (task) {
-        task.reminder = null;
-        task.updated_at = nowIso();
-      }
+    if (r.dismissed) continue;
+    const eff = r.snoozed_until || r.remind_at;
+    const ts = new Date(eff).getTime();
+    if (isNaN(ts) || ts > nowMs) continue;
+    // Keep not-yet-shown misses within 24h so rescheduleAll can notify them;
+    // drop once shown (fired_at) or older than 24h.
+    if (!r.fired_at && nowMs - ts <= REMINDER_STALE_MS) continue;
+    r.dismissed = 1;
+    const task = db.tasks.find(t => t.id === r.task_id);
+    if (task) {
+      task.reminder = null;
+      task.updated_at = nowIso();
     }
   }
 }
@@ -210,6 +238,7 @@ async function rescheduleAll(): Promise<void> {
     }
     const specs: LocalNotificationSchema[] = [];
     const used = new Set<number>();
+    let needSave = false;
 
     for (const r of d.reminders) {
       if (r.dismissed) continue;
@@ -218,8 +247,15 @@ async function rescheduleAll(): Promise<void> {
       const atIso = r.snoozed_until || r.remind_at;
       const ts = new Date(atIso).getTime();
       if (isNaN(ts)) continue;
-      // Allow firing immediately for recently-set past times, skip stale ones
-      if (ts <= nowMs && nowMs - ts > 60000) continue;
+      if (ts <= nowMs) {
+        // Missed while device off/app closed: catch up within 24h (fires ~now),
+        // drop anything older. Mark fired so later resumes don't repeat it.
+        if (nowMs - ts > REMINDER_STALE_MS) continue;
+        if (!r.fired_at) {
+          r.fired_at = new Date().toISOString();
+          needSave = true;
+        }
+      }
       const notifId = toNotifId(r.id);
       if (used.has(notifId)) continue;
       used.add(notifId);
@@ -232,6 +268,7 @@ async function rescheduleAll(): Promise<void> {
         foreground: true,
         autoCancel: true,
         isExactNotification: exactOk,
+        ...(actionsEnabled ? { actionTypeId: 'reminder-snooze' } : {}),
       });
     }
 
@@ -240,6 +277,7 @@ async function rescheduleAll(): Promise<void> {
         await LocalNotifications.schedule({ notifications: specs });
       }
     }
+    if (needSave) await save();
   } catch (e) {
     console.warn('reschedule failed:', e);
   }
@@ -290,7 +328,12 @@ async function registerListeners(): Promise<void> {
     const extra: any = notification.extra ?? {};
     void enqueue(async () => {
       await ready;
-      if (extra.reminderId) await dismissReminderById(String(extra.reminderId));
+      if (extra.reminderId) {
+        const rem = db?.reminders.find(x => x.id === String(extra.reminderId));
+        const snoozedFuture = !!(rem && rem.snoozed_until && new Date(rem.snoozed_until).getTime() > Date.now());
+        if (snoozedFuture) return;
+        await dismissReminderById(String(extra.reminderId));
+      }
       const data: NotificationActionData = {
         taskId: String(extra.taskId || ''),
         reminderId: String(extra.reminderId || ''),
@@ -302,8 +345,19 @@ async function registerListeners(): Promise<void> {
 
   await LocalNotifications.addListener('localNotificationActionPerformed', action => {
     const extra: any = action.notification?.extra ?? {};
+    const actionId = String((action as any).actionId || '');
     void enqueue(async () => {
       await ready;
+      const snoozeMatch = /^snooze_(\d+)$/.exec(actionId);
+      if (snoozeMatch && extra.taskId) {
+        const minutes = parseInt(snoozeMatch[1], 10) || 10;
+        snoozeReminderInDb(String(extra.taskId), minutes);
+        await save();
+        await rescheduleAll();
+        const labels: Record<number, string> = { 5: '۵', 10: '۱۰', 30: '۳۰' };
+        useStore.getState().showToast(`⏳ ${labels[minutes] || minutes} دقیقه بعد دوباره یادآوری می‌شود`, 'info');
+        return;
+      }
       if (extra.reminderId) await dismissReminderById(String(extra.reminderId));
       const data: NotificationActionData = {
         taskId: String(extra.taskId || ''),
@@ -376,10 +430,19 @@ function getActiveRemindersInDb(): Record<string, string> {
 function snoozeReminderInDb(taskId: string, minutes: number): any {
   const d = getDb();
   const newTime = new Date(Date.now() + minutes * 60 * 1000).toISOString();
-  d.reminders.forEach(r => {
-    if (r.task_id === taskId && !r.dismissed) r.snoozed_until = newTime;
-  });
-  return { success: true };
+  const rows = d.reminders.filter(r => r.task_id === taskId);
+  rows.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+  const target = rows[0];
+  if (!target) return { success: false };
+  target.snoozed_until = newTime;
+  target.dismissed = 0;
+  target.fired_at = null;
+  const task = d.tasks.find(t => t.id === taskId);
+  if (task) {
+    task.reminder = newTime;
+    task.updated_at = new Date().toISOString();
+  }
+  return { success: true, snoozed_until: newTime };
 }
 
 function pickFileText(accept: string): Promise<string | null> {

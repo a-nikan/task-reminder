@@ -56,6 +56,7 @@ export interface Reminder {
   remind_at: string;
   snoozed_until: string | null;
   dismissed: number;
+  fired_at?: string | null;
   created_at: string;
 }
 
