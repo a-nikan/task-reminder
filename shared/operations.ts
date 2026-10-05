@@ -179,6 +179,7 @@ export function copyLinkedTask(db: DatabaseSchema, taskId: string, newDate: stri
     created_at: now,
     updated_at: now,
   };
+  (newTask as any).reminder = null;
 
   if (!sourceTask.linked_id) {
     sourceTask.linked_id = linkedId;

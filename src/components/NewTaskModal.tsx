@@ -18,9 +18,6 @@ export function NewTaskModal() {
     subtasks: [],
     recurrence: '',
     reminderOffset: 0,
-    reminderEnabled: false,
-    reminderDate: '',
-    reminderTime: '',
   };
 
   const handleSubmit = async (data: TaskFormData) => {

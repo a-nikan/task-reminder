@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useStore } from '../store';
 import { cn, getToday, getTomorrow, RECURRENCE_OPTIONS, REMINDER_OPTIONS, parseNaturalLanguage } from '../utils';
-import type { TaskPriority, Subtask } from '../types';
-import { Calendar, Clock, Flag, Bell, Tag, Folder, Repeat, Sparkles, Plus, Check, X, Palette } from 'lucide-react';
+import type { Task, TaskPriority, Subtask } from '../types';
+import { Calendar, Clock, Flag, Tag, Folder, Repeat, Sparkles, Plus, Check, X, Palette } from 'lucide-react';
 import { DateInput } from './DateInput';
 import { ColorSwatches } from './ColorSwatches';
 import { v4 as uuidv4 } from 'uuid';
@@ -19,9 +19,6 @@ export interface TaskFormData {
   subtasks: Subtask[];
   recurrence: string;
   reminderOffset: number;
-  reminderEnabled: boolean;
-  reminderDate: string;
-  reminderTime: string;
 }
 
 interface TaskFormProps {
@@ -43,9 +40,6 @@ export function TaskForm({ initial, submitLabel, onSubmit, onCancel }: TaskFormP
   const [taskTags, setTaskTags] = useState<string[]>(initial.tags);
   const [recurrence, setRecurrence] = useState(initial.recurrence);
   const [reminderOffset, setReminderOffset] = useState(initial.reminderOffset);
-  const [enableReminder, setEnableReminder] = useState(initial.reminderEnabled);
-  const [reminderDate, setReminderDate] = useState(initial.reminderDate);
-  const [reminderTime, setReminderTime] = useState(initial.reminderTime);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [newTag, setNewTag] = useState('');
   const [subtasks, setSubtasks] = useState<Subtask[]>(initial.subtasks);
@@ -69,9 +63,6 @@ export function TaskForm({ initial, submitLabel, onSubmit, onCancel }: TaskFormP
         subtasks,
         recurrence,
         reminderOffset,
-        reminderEnabled: enableReminder,
-        reminderDate,
-        reminderTime,
       });
     } finally {
       setBusy(false);
@@ -171,26 +162,6 @@ export function TaskForm({ initial, submitLabel, onSubmit, onCancel }: TaskFormP
         </div>
       </div>
 
-      <div className="mb-4 p-3 rounded-xl border border-border/60 bg-muted/30">
-        <label className="flex items-center gap-2 text-xs font-medium cursor-pointer mb-2">
-          <input type="checkbox" checked={enableReminder} onChange={(e) => { setEnableReminder(e.target.checked); if (e.target.checked && !reminderDate) { setReminderDate(date || getToday()); setReminderTime(time || '09:00'); } }} className="w-3.5 h-3.5 accent-primary" />
-          <Bell className="w-3.5 h-3.5" />
-          هشدار (اعلان در تاریخ و ساعت مشخص)
-        </label>
-        {enableReminder && (
-          <div className="grid grid-cols-2 gap-2 animate-slide-up">
-            <div>
-              <label className="text-[11px] text-muted-foreground block mb-1">تاریخ هشدار</label>
-              <DateInput value={reminderDate} onChange={setReminderDate} />
-            </div>
-            <div>
-              <label className="text-[11px] text-muted-foreground block mb-1">ساعت هشدار</label>
-              <input type="time" value={reminderTime} onChange={(e) => setReminderTime(e.target.value)} className="w-full px-2 py-1.5 rounded-lg bg-background border border-border text-xs focus:outline-none" />
-            </div>
-          </div>
-        )}
-      </div>
-
       <div className="mb-4">
         <label className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1"><Flag className="w-3 h-3" />اولویت</label>
         <div className="flex gap-1.5">
@@ -283,29 +254,70 @@ export function TaskForm({ initial, submitLabel, onSubmit, onCancel }: TaskFormP
 export function scheduleReminderFromForm(
   taskId: string,
   data: TaskFormData,
-  hadActiveReminder: boolean
+  hadActiveReminder: boolean,
+  oldDateTime?: string | null,
+  offsetChanged?: boolean
 ): Promise<void> {
   const apply = async () => {
-    if (data.reminderEnabled && data.reminderDate && data.reminderTime) {
-      const remindAt = new Date(`${data.reminderDate}T${data.reminderTime}:00`).toISOString();
-      if (new Date(remindAt).getTime() > Date.now()) {
-        await window.electronAPI.setReminder(taskId, remindAt);
-        return;
-      }
-    }
-    if (!data.reminderEnabled && hadActiveReminder) {
+    const newKey = data.date && data.time ? `${data.date}T${data.time}` : '';
+    const oldKey = oldDateTime || '';
+    const scheduleChanged = newKey !== oldKey;
+    const applyOffsetChange = !!offsetChanged && !!newKey;
+    if (!scheduleChanged && !applyOffsetChange) return;
+
+    const oldTs = oldDateTime ? new Date(`${oldDateTime}:00`).getTime() : NaN;
+    const shouldArm = hadActiveReminder || isNaN(oldTs) || oldTs <= Date.now();
+    const offsetMs = (data.reminderOffset > 0 ? data.reminderOffset : 0) * 60 * 1000;
+    const remindAtTs = newKey ? new Date(`${newKey}:00`).getTime() - offsetMs : NaN;
+    const future = !isNaN(remindAtTs) && remindAtTs > Date.now();
+
+    if (shouldArm && future) {
+      await window.electronAPI.setReminder(taskId, new Date(remindAtTs).toISOString());
+    } else if (hadActiveReminder) {
       await window.electronAPI.cancelReminder(taskId);
-      return;
-    }
-    if (!data.reminderEnabled && data.reminderOffset > 0 && data.date && data.time) {
-      const taskDt = new Date(`${data.date}T${data.time}:00`).getTime();
-      if (!isNaN(taskDt)) {
-        const remindAt = new Date(taskDt - data.reminderOffset * 60 * 1000).toISOString();
-        if (new Date(remindAt).getTime() > Date.now()) {
-          await window.electronAPI.setReminder(taskId, remindAt);
-        }
-      }
     }
   };
   return apply().catch(() => {});
+}
+
+export async function followReminderAfterMove(task: Task, newDate: string | null): Promise<void> {
+  if (!task.time) return;
+  try {
+    const oldKey = task.date && task.time ? `${task.date}T${task.time}` : '';
+    const newKey = newDate ? `${newDate}T${task.time}` : '';
+    if (oldKey === newKey) return;
+
+    const active = await window.electronAPI.getReminder(task.id);
+    const oldTs = task.date ? new Date(`${task.date}T${task.time}:00`).getTime() : NaN;
+    const shouldArm = !!active || isNaN(oldTs) || oldTs <= Date.now();
+    const offsetMs = (task.reminder_offset > 0 ? task.reminder_offset : 0) * 60 * 1000;
+    const remindAtTs = newDate ? new Date(`${newDate}T${task.time}:00`).getTime() - offsetMs : NaN;
+    const future = !isNaN(remindAtTs) && remindAtTs > Date.now();
+
+    if (shouldArm && future) {
+      await window.electronAPI.setReminder(task.id, new Date(remindAtTs).toISOString());
+    } else if (active) {
+      await window.electronAPI.cancelReminder(task.id);
+    }
+  } catch {
+    // ignore
+  }
+}
+
+export async function armReminderIfFuture(
+  taskId: string,
+  date: string | null,
+  time: string | null,
+  offsetMinutes: number
+): Promise<void> {
+  if (!date || !time) return;
+  try {
+    const offsetMs = (offsetMinutes > 0 ? offsetMinutes : 0) * 60 * 1000;
+    const ts = new Date(`${date}T${time}:00`).getTime() - offsetMs;
+    if (ts > Date.now()) {
+      await window.electronAPI.setReminder(taskId, new Date(ts).toISOString());
+    }
+  } catch {
+    // ignore
+  }
 }

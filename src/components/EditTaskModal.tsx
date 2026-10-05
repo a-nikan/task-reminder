@@ -3,17 +3,6 @@ import { useStore } from '../store';
 import { X } from 'lucide-react';
 import { TaskForm, scheduleReminderFromForm, type TaskFormData } from './TaskForm';
 
-function toLocalParts(iso: string | null | undefined): { date: string; time: string } {
-  if (!iso) return { date: '', time: '' };
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return { date: '', time: '' };
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return {
-    date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
-    time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
-  };
-}
-
 export function EditTaskModal() {
   const { editingTask, setEditingTask, setShowEditTaskForm, setSelectedTask, selectedTask, refreshCurrentView, showToast } = useStore();
   const [initial, setInitial] = useState<TaskFormData | null>(null);
@@ -30,7 +19,6 @@ export function EditTaskModal() {
     window.electronAPI.getReminder(editingTask.id).then((r: any) => {
       const active = r?.remind_at ? r : null;
       setHadActiveReminder(!!active);
-      const parts = toLocalParts(active ? (active.snoozed_until || active.remind_at) : null);
       setInitial({
         title: editingTask.title,
         description: editingTask.description || '',
@@ -43,9 +31,6 @@ export function EditTaskModal() {
         subtasks: (editingTask.subtasks || []).map(s => ({ ...s })),
         recurrence: editingTask.recurrence || '',
         reminderOffset: editingTask.reminder_offset || 0,
-        reminderEnabled: !!active,
-        reminderDate: parts.date || editingTask.date || '',
-        reminderTime: parts.time || editingTask.time || '',
       });
     }).catch(() => {
       setHadActiveReminder(false);
@@ -61,9 +46,6 @@ export function EditTaskModal() {
         subtasks: (editingTask.subtasks || []).map(s => ({ ...s })),
         recurrence: editingTask.recurrence || '',
         reminderOffset: editingTask.reminder_offset || 0,
-        reminderEnabled: false,
-        reminderDate: editingTask.date || '',
-        reminderTime: editingTask.time || '',
       });
     });
   }, [editingTask]);
@@ -89,7 +71,13 @@ export function EditTaskModal() {
       recurrence: data.recurrence || null,
       reminder_offset: data.reminderOffset,
     });
-    await scheduleReminderFromForm(editingTask.id, data, hadActiveReminder);
+    await scheduleReminderFromForm(
+      editingTask.id,
+      data,
+      hadActiveReminder,
+      editingTask.date && editingTask.time ? `${editingTask.date}T${editingTask.time}` : null,
+      data.reminderOffset !== (editingTask.reminder_offset || 0)
+    );
     // Keep detail panel in sync if it shows this task
     if (selectedTask?.id === editingTask.id) {
       const updated = await window.electronAPI.getTaskById(editingTask.id);

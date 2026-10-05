@@ -5,6 +5,7 @@ import type { Task, TaskStatus, Subtask } from '../types';
 import { Check, Clock, Star, ChevronDown, ChevronUp, Edit2, Copy, CheckSquare, Plus, Trash2, X, Calendar, Bell, BellOff } from 'lucide-react';
 import { DateInput } from './DateInput';
 import { ColorSwatches } from './ColorSwatches';
+import { followReminderAfterMove, armReminderIfFuture } from './TaskForm';
 
 interface TaskCardProps {
   task: Task;
@@ -193,6 +194,7 @@ export function TaskCard({
 
   const handleMoveToDate = async (date: string | null) => {
     await window.electronAPI.moveTaskToDate(task.id, date);
+    await followReminderAfterMove(task, date);
     setShowDatePicker(false);
     refreshCurrentView();
     showToast(date ? 'تاریخ تعیین شد' : 'تاریخ حذف شد');
@@ -203,7 +205,10 @@ export function TaskCard({
       showToast('تاریخ مقصد را انتخاب کنید', 'error');
       return;
     }
-    await window.electronAPI.copyLinkedTask(task.id, copyDate);
+    const created: any = await window.electronAPI.copyLinkedTask(task.id, copyDate);
+    if (created?.id) {
+      await armReminderIfFuture(created.id, created.date, created.time, created.reminder_offset || 0);
+    }
     setShowCopyModal(false);
     setCopyDate('');
     refreshCurrentView();

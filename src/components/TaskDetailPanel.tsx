@@ -5,6 +5,7 @@ import type { Task, TaskStatus, Subtask } from '../types';
 import { X, Check, Clock, Folder, Bell, Trash2, Archive, Star, Edit2, Link, Copy, Plus, CheckSquare, Tag, Repeat } from 'lucide-react';
 import { DateInput } from './DateInput';
 import { ColorSwatches } from './ColorSwatches';
+import { followReminderAfterMove, armReminderIfFuture } from './TaskForm';
 
 export function TaskDetailPanel() {
   const { selectedTask, setShowTaskDetail, setSelectedTask, setEditingTask, setShowEditTaskForm, categories, refreshCurrentView, showToast, pushUndo, settings, showConfirm } = useStore();
@@ -86,6 +87,7 @@ export function TaskDetailPanel() {
 
   const handleMoveToDate = async (newDate: string | null) => {
     await window.electronAPI.moveTaskToDate(task.id, newDate);
+    await followReminderAfterMove(task, newDate);
     await refreshTask();
   };
 
@@ -167,7 +169,10 @@ export function TaskDetailPanel() {
 
   const handleCopyLinked = async () => {
     if (!copyDate) return;
-    await window.electronAPI.copyLinkedTask(task.id, copyDate);
+    const created: any = await window.electronAPI.copyLinkedTask(task.id, copyDate);
+    if (created?.id) {
+      await armReminderIfFuture(created.id, created.date, created.time, created.reminder_offset || 0);
+    }
     showToast('تسک کپی شد و لینک شد');
     setShowCopyModal(false);
     await refreshTask();
