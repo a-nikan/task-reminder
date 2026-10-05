@@ -1,0 +1,136 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 0 0% 100%;
+  --foreground: 224 71% 4%;
+  --card: 0 0% 100%;
+  --card-foreground: 224 71% 4%;
+  --primary: 262 83% 58%;
+  --primary-foreground: 210 20% 98%;
+  --secondary: 220 14% 96%;
+  --secondary-foreground: 220 9% 46%;
+  --muted: 220 14% 96%;
+  --muted-foreground: 220 9% 46%;
+  --accent: 262 83% 58%;
+  --accent-foreground: 210 20% 98%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 210 20% 98%;
+  --border: 220 13% 91%;
+  --input: 220 13% 91%;
+  --ring: 262 83% 58%;
+  --radius: 0.625rem;
+  --sidebar: 220 14% 97%;
+  --sidebar-foreground: 224 71% 4%;
+  --sidebar-border: 220 13% 91%;
+}
+
+.dark {
+  --background: 224 71% 4%;
+  --foreground: 210 20% 98%;
+  --card: 224 50% 7%;
+  --card-foreground: 210 20% 98%;
+  --primary: 262 83% 58%;
+  --primary-foreground: 210 20% 98%;
+  --secondary: 224 40% 12%;
+  --secondary-foreground: 220 14% 75%;
+  --muted: 224 40% 12%;
+  --muted-foreground: 220 14% 60%;
+  --accent: 262 83% 58%;
+  --accent-foreground: 210 20% 98%;
+  --destructive: 0 62% 50%;
+  --destructive-foreground: 210 20% 98%;
+  --border: 224 40% 15%;
+  --input: 224 40% 15%;
+  --ring: 262 83% 58%;
+  --sidebar: 224 50% 6%;
+  --sidebar-foreground: 210 20% 98%;
+  --sidebar-border: 224 40% 12%;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  border-color: hsl(var(--border));
+}
+
+body {
+  font-family: 'Vazirmatn', 'Tahoma', 'Arial', sans-serif;
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+.drag-region {
+  -webkit-app-region: drag;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+.animate-slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { transform: translateX(20px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}

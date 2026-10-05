@@ -1,0 +1,109 @@
+import { useEffect } from 'react';
+import { useStore } from './store';
+import { Sidebar } from './components/Sidebar';
+import { MobileHeader } from './components/MobileHeader';
+import { TitleBar } from './components/TitleBar';
+import { TodayView } from './components/TodayView';
+import { CalendarView } from './components/CalendarView';
+import { AllTasksView } from './components/AllTasksView';
+import { AnytimeView } from './components/AnytimeView';
+import { OverdueView } from './components/OverdueView';
+import { ImportantView } from './components/ImportantView';
+import { CategoriesView } from './components/CategoriesView';
+import { CategoryDetailView } from './components/CategoryDetailView';
+import { StatisticsView } from './components/StatisticsView';
+import { SettingsView } from './components/SettingsView';
+import { TaskDetailPanel } from './components/TaskDetailPanel';
+import { NewTaskModal } from './components/NewTaskModal';
+import { EditTaskModal } from './components/EditTaskModal';
+import { CommandPalette } from './components/CommandPalette';
+import { Toast } from './components/Toast';
+import { ConfirmDialog } from './components/ConfirmDialog';
+import { Onboarding } from './components/Onboarding';
+
+export default function App() {
+  const {
+    view, setView, loadSettings, loadCategories, loadTags,
+    showTaskDetail, showNewTaskForm, showEditTaskForm, showCommandPalette,
+    onboardingComplete, setShowNewTaskForm, showToast, refreshCurrentView,
+    setIsMaximized, settings,
+  } = useStore();
+
+  useEffect(() => {
+    const init = async () => {
+      await loadSettings();
+      await loadCategories();
+      await loadTags();
+    };
+    init();
+
+    window.electronAPI.onMaximizeChange((maximized) => {
+      setIsMaximized(maximized);
+    });
+
+    window.electronAPI.onNewTask(() => {
+      setShowNewTaskForm(true);
+    });
+
+    window.electronAPI.onNotificationAction((data) => {
+      showToast(`⏰ یادآوری: ${data.title}`, 'info');
+      refreshCurrentView();
+    });
+
+    window.electronAPI.onOpenTask(async (data) => {
+      try {
+        const task = await window.electronAPI.getTaskById(data.taskId);
+        if (task) {
+          useStore.getState().setSelectedTask(task);
+          useStore.getState().setShowTaskDetail(true);
+          refreshCurrentView();
+        }
+      } catch {
+        // ignore
+      }
+    });
+
+    window.electronAPI.onNavigateTo((viewName: string) => {
+      const validViews = ['today', 'calendar', 'all', 'anytime', 'overdue', 'important', 'settings'];
+      if (validViews.includes(viewName)) {
+        setView(viewName as any);
+      }
+    });
+  }, []);
+
+  const renderView = () => {
+    switch (view) {
+      case 'today': return <TodayView />;
+      case 'calendar': return <CalendarView />;
+      case 'all': return <AllTasksView />;
+      case 'anytime': return <AnytimeView />;
+      case 'overdue': return <OverdueView />;
+      case 'important': return <ImportantView />;
+      case 'categories': return <CategoriesView />;
+      case 'category-detail': return <CategoryDetailView />;
+      case 'statistics': return <StatisticsView />;
+      case 'settings': return <SettingsView />;
+      default: return <TodayView />;
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-screen w-screen overflow-hidden">
+      {!onboardingComplete && settings.onboardingComplete !== 'true' && <Onboarding />}
+      <TitleBar />
+      <MobileHeader />
+      <div className="flex flex-1 overflow-hidden">
+        <Sidebar />
+        <main className="flex-1 overflow-hidden relative">
+          {renderView()}
+        </main>
+        {showTaskDetail && <TaskDetailPanel />}
+      </div>
+      {showNewTaskForm && <NewTaskModal />}
+      {showEditTaskForm && <EditTaskModal />}
+      {showCommandPalette && <CommandPalette />}
+      <Toast />
+      <ConfirmDialog />
+    </div>
+  );
+}
