@@ -477,6 +477,29 @@ export function TaskCard({
           </div>
         </div>
       )}
+
+      {task.subtasks && task.subtasks.length > 0 && (
+        <div
+          className="mt-auto flex gap-[3px] h-3.5 rounded-b-[14px] overflow-hidden"
+          style={{ borderTop: `1px dashed ${onColor}33` }}
+          aria-hidden="true"
+        >
+          {task.subtasks.map((st: Subtask) => (
+            <div key={st.id} className="relative flex-1 min-w-[3px]">
+              <div
+                className="absolute inset-0 rounded-sm border border-dashed"
+                style={{ borderColor: `${onColor}59` }}
+              />
+              <div
+                className={cn(
+                  'absolute inset-0 rounded-sm bg-white/40 transition-all duration-300 ease-out shadow-[inset_0_-1px_2px_rgba(0,0,0,0.12)]',
+                  st.completed && 'opacity-0 translate-y-4 rotate-6 scale-75'
+                )}
+              />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
