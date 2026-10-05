@@ -18,6 +18,7 @@ export interface Task {
   reminder: string | null;
   reminder_offset: number;
   category_id: string | null;
+  color: string | null;
   tags: string[];
   subtasks: Subtask[];
   linked_id: string | null;

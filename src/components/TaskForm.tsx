@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { useStore } from '../store';
 import { cn, getToday, getTomorrow, RECURRENCE_OPTIONS, REMINDER_OPTIONS, parseNaturalLanguage } from '../utils';
 import type { TaskPriority, Subtask } from '../types';
-import { Calendar, Clock, Flag, Bell, Tag, Folder, Repeat, Sparkles, Plus, Check, X } from 'lucide-react';
+import { Calendar, Clock, Flag, Bell, Tag, Folder, Repeat, Sparkles, Plus, Check, X, Palette } from 'lucide-react';
 import { DateInput } from './DateInput';
+import { ColorSwatches } from './ColorSwatches';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface TaskFormData {
@@ -13,6 +14,7 @@ export interface TaskFormData {
   time: string;
   priority: TaskPriority;
   categoryId: string;
+  color: string;
   tags: string[];
   subtasks: Subtask[];
   recurrence: string;
@@ -37,6 +39,7 @@ export function TaskForm({ initial, submitLabel, onSubmit, onCancel }: TaskFormP
   const [time, setTime] = useState(initial.time);
   const [priority, setPriority] = useState<TaskPriority>(initial.priority);
   const [categoryId, setCategoryId] = useState(initial.categoryId);
+  const [color, setColor] = useState(initial.color);
   const [taskTags, setTaskTags] = useState<string[]>(initial.tags);
   const [recurrence, setRecurrence] = useState(initial.recurrence);
   const [reminderOffset, setReminderOffset] = useState(initial.reminderOffset);
@@ -61,6 +64,7 @@ export function TaskForm({ initial, submitLabel, onSubmit, onCancel }: TaskFormP
         time,
         priority,
         categoryId,
+        color,
         tags: taskTags,
         subtasks,
         recurrence,
@@ -204,6 +208,11 @@ export function TaskForm({ initial, submitLabel, onSubmit, onCancel }: TaskFormP
             </button>
           ))}
         </div>
+      </div>
+
+      <div className="mb-4">
+        <label className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1"><Palette className="w-3 h-3" />رنگ کارت</label>
+        <ColorSwatches value={color} onPick={setColor} />
       </div>
 
       <div className="flex items-center gap-2 mb-4">

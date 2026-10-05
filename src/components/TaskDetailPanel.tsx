@@ -4,6 +4,7 @@ import { cn, getStatusLabel, getPriorityLabel, getPriorityColor, getStatusBgColo
 import type { Task, TaskStatus, Subtask } from '../types';
 import { X, Check, Clock, Folder, Bell, Trash2, Archive, Star, Edit2, Link, Copy, Plus, CheckSquare, Tag, Repeat } from 'lucide-react';
 import { DateInput } from './DateInput';
+import { ColorSwatches } from './ColorSwatches';
 
 export function TaskDetailPanel() {
   const { selectedTask, setShowTaskDetail, setSelectedTask, setEditingTask, setShowEditTaskForm, categories, refreshCurrentView, showToast, pushUndo, settings, showConfirm } = useStore();
@@ -91,6 +92,12 @@ export function TaskDetailPanel() {
   const handleToggleFavorite = async () => {
     await window.electronAPI.updateTask(task.id, { favorite: !task.favorite });
     await refreshTask();
+  };
+
+  const handlePickColor = async (color: string) => {
+    await window.electronAPI.updateTask(task.id, { color: color || null });
+    await refreshTask();
+    showToast('رنگ کارت تنظیم شد');
   };
 
   const handleArchive = async () => {
@@ -254,6 +261,10 @@ export function TaskDetailPanel() {
 
           <DetailRow label="دسته‌بندی">
             <span className="text-sm flex items-center gap-1"><Folder className="w-3 h-3" />{categories.find(c => c.id === task.category_id)?.name || '—'}</span>
+          </DetailRow>
+
+          <DetailRow label="رنگ کارت">
+            <ColorSwatches value={task.color || ''} onPick={handlePickColor} />
           </DetailRow>
 
           <DetailRow label="تگ‌ها">

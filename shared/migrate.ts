@@ -16,6 +16,7 @@ export function migrateDatabase(database: DatabaseSchema): void {
   database.tasks.forEach(t => {
     if (!t.subtasks) t.subtasks = [];
     if (t.linked_id === undefined) t.linked_id = null;
+    if (t.color === undefined) t.color = null;
     if (!t.updated_at) t.updated_at = t.created_at || nowIso();
     if (!t.created_at) t.created_at = t.updated_at;
   });

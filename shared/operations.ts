@@ -10,7 +10,7 @@ import type {
 } from './types';
 import { addTombstone, addTombstones, nowIso, removeTombstone } from './sync';
 
-const LINKED_SYNC_FIELDS = ['title', 'description', 'status', 'priority', 'time', 'subtasks', 'tags', 'recurrence', 'reminder_offset', 'completed_at'] as const;
+const LINKED_SYNC_FIELDS = ['title', 'description', 'status', 'priority', 'time', 'subtasks', 'tags', 'recurrence', 'reminder_offset', 'completed_at', 'color'] as const;
 
 export function syncLinkedTaskFull(db: DatabaseSchema, taskId: string): void {
   const task = db.tasks.find(t => t.id === taskId);
@@ -42,6 +42,7 @@ export function createTask(db: DatabaseSchema, input: any): Task {
     reminder: input.reminder || null,
     reminder_offset: input.reminder_offset || 0,
     category_id: input.category_id || null,
+    color: input.color || null,
     tags: input.tags || [],
     subtasks: input.subtasks || [],
     linked_id: input.linked_id || null,
@@ -65,7 +66,7 @@ export function updateTask(db: DatabaseSchema, id: string, updates: any): Task |
   if (!task) return null;
 
   const now = nowIso();
-  const allowedFields = ['title', 'description', 'status', 'priority', 'date', 'time', 'reminder', 'reminder_offset', 'category_id', 'tags', 'subtasks', 'linked_id', 'recurrence', 'recurrence_parent', 'order_index', 'archived', 'favorite'];
+  const allowedFields = ['title', 'description', 'status', 'priority', 'date', 'time', 'reminder', 'reminder_offset', 'category_id', 'color', 'tags', 'subtasks', 'linked_id', 'recurrence', 'recurrence_parent', 'order_index', 'archived', 'favorite'];
 
   for (const [key, value] of Object.entries(updates)) {
     if (allowedFields.includes(key)) {

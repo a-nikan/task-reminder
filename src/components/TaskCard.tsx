@@ -4,6 +4,7 @@ import { cn, getToday, getTomorrow, formatTaskDateLocalized, formatReminderLocal
 import type { Task, TaskStatus, Subtask } from '../types';
 import { Check, Clock, Star, ChevronDown, ChevronUp, Edit2, Copy, CheckSquare, Plus, Trash2, X, Calendar, Bell, BellOff } from 'lucide-react';
 import { DateInput } from './DateInput';
+import { ColorSwatches } from './ColorSwatches';
 
 interface TaskCardProps {
   task: Task;
@@ -54,6 +55,22 @@ function fallbackAccent(id: string): string {
   return FALLBACK_PALETTE[Math.abs(hash) % FALLBACK_PALETTE.length];
 }
 
+function colorBrightness(hex: string): number {
+  const m = hex.replace('#', '');
+  const r = parseInt(m.slice(0, 2), 16);
+  const g = parseInt(m.slice(2, 4), 16);
+  const b = parseInt(m.slice(4, 6), 16);
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+}
+
+function pickOnColor(accent: string): string {
+  const isDark =
+    typeof document !== 'undefined' &&
+    document.documentElement.classList.contains('dark');
+  const eff = colorBrightness(accent) * 0.85 + (isDark ? 0.04 : 0.96) * 0.15;
+  return eff > 0.42 ? '#16161d' : '#ffffff';
+}
+
 export function TaskCard({
   task,
   onStatusChange,
@@ -61,7 +78,7 @@ export function TaskCard({
   onDelete,
   showDate = false,
   dateLabel,
-  dateLabelColor = 'text-muted-foreground',
+  dateLabelColor = '',
   borderColor = 'border-border/50',
   hoverBg = 'hover:bg-accent/5',
   selectionMode = false,
@@ -71,7 +88,6 @@ export function TaskCard({
   onReminderChanged,
 }: TaskCardProps) {
   const { refreshCurrentView, showToast, setSelectedTask, setShowTaskDetail, settings, setEditingTask, setShowEditTaskForm } = useStore();
-  const categories = useStore((s) => s.categories);
   const [expanded, setExpanded] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [newDate, setNewDate] = useState('');
@@ -82,6 +98,7 @@ export function TaskCard({
   const [reminderTime, setReminderTime] = useState('');
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
   const [showAddSubtask, setShowAddSubtask] = useState(false);
+  const [showColorPicker, setShowColorPicker] = useState(false);
 
   const cycleStatus = () => {
     if (onStatusChange) {
@@ -167,6 +184,13 @@ export function TaskCard({
     refreshCurrentView();
   };
 
+  const handlePickColor = async (color: string) => {
+    await window.electronAPI.updateTask(task.id, { color: color || null });
+    setShowColorPicker(false);
+    refreshCurrentView();
+    showToast('رنگ کارت تنظیم شد');
+  };
+
   const handleMoveToDate = async (date: string | null) => {
     await window.electronAPI.moveTaskToDate(task.id, date);
     setShowDatePicker(false);
@@ -192,10 +216,8 @@ export function TaskCard({
 
   const effectiveReminder = reminderAt ?? (task as any).reminder ?? null;
   const reminderLabel = formatReminderLocalized(effectiveReminder, settings.calendarType);
-  const catColor = task.category_id
-    ? categories.find((c) => c.id === task.category_id)?.color
-    : undefined;
-  const accent = catColor || fallbackAccent(task.id);
+  const accent = task.color || fallbackAccent(task.id);
+  const onColor = pickOnColor(accent);
   const customBorder = borderColor !== 'border-border/50';
   const displayDateLabel = dateLabel && /^\d{4}-\d{2}-\d{2}$/.test(dateLabel)
     ? formatTaskDateLocalized(dateLabel, settings.calendarType)
@@ -214,8 +236,9 @@ export function TaskCard({
           'hover:-translate-y-0.5 hover:rotate-[-0.4deg] hover:shadow-[0_10px_24px_-8px_rgba(0,0,0,0.28)]'
       )}
       style={{
-        borderColor: customBorder ? undefined : `${accent}59`,
-        background: `linear-gradient(165deg, ${accent}26 0%, ${accent}0f 55%, transparent 100%)`,
+        borderColor: customBorder ? undefined : accent,
+        background: `linear-gradient(165deg, ${accent}e6 0%, ${accent}d9 55%, ${accent}cc 100%)`,
+        color: onColor,
       }}
     >
       {effectiveReminder && (
@@ -255,30 +278,30 @@ export function TaskCard({
         )}
 
         <div className="flex flex-1 min-w-0 flex-col">
-          <div className={cn('text-sm font-medium leading-snug line-clamp-2', task.status === 'done' && 'line-through text-muted-foreground')} title={task.title}>
+          <div className={cn('text-sm font-medium leading-snug line-clamp-2', task.status === 'done' && 'line-through opacity-60')} title={task.title}>
             {task.title}
           </div>
               <div className="flex items-center gap-2 flex-wrap mt-auto pt-2">
                 {showDate && displayDateLabel && (
-                  <span className={cn('text-[11px] flex items-center gap-1', dateLabelColor)}>
+                  <span className={cn('text-[11px] flex items-center gap-1', !dateLabelColor && 'opacity-75', dateLabelColor)}>
                     <Calendar className="w-3 h-3" /> {displayDateLabel}
                   </span>
                 )}
                 {task.time && (
-                  <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                  <span className="text-[11px] opacity-75 flex items-center gap-1">
                     <Clock className="w-3 h-3" /> {task.time}
                   </span>
                 )}
                 {effectiveReminder && (
-                  <span className="text-[11px] text-amber-500 flex items-center gap-0.5">
+                  <span className="text-[11px] font-medium flex items-center gap-0.5">
                     <Bell className="w-3 h-3" /> {reminderLabel}
                   </span>
                 )}
                 {task.linked_id && (
-                  <span className="text-[11px] text-primary/70 flex items-center gap-0.5"><Copy className="w-3 h-3" /> لینک‌شده</span>
+                  <span className="text-[11px] opacity-75 flex items-center gap-0.5"><Copy className="w-3 h-3" /> لینک‌شده</span>
                 )}
                 {task.subtasks && task.subtasks.length > 0 && (
-                  <span className="text-[11px] text-muted-foreground flex items-center gap-0.5">
+                  <span className="text-[11px] opacity-75 flex items-center gap-0.5">
                     <CheckSquare className="w-3 h-3" />
                     {task.subtasks.filter((s: Subtask) => s.completed).length}/{task.subtasks.length}
                   </span>
@@ -290,16 +313,16 @@ export function TaskCard({
           {!selectionMode && (
             <button onClick={(e) => { e.stopPropagation(); openFullEdit(); }} title="ویرایش کامل"
               className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-muted transition-all">
-              <Edit2 className="w-3 h-3 text-muted-foreground" />
+              <Edit2 className="w-3 h-3 opacity-60" />
             </button>
           )}
           {onToggleFavorite && !selectionMode && (
             <button onClick={(e) => { e.stopPropagation(); onToggleFavorite(task); }}
               className={cn('transition-all', task.favorite ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')}>
-              <Star className={cn('w-3.5 h-3.5', task.favorite ? 'fill-yellow-500 text-yellow-500' : 'text-muted-foreground/50')} />
+              <Star className={cn('w-3.5 h-3.5', task.favorite ? 'fill-yellow-500 text-yellow-500' : 'opacity-50')} />
             </button>
           )}
-          {expanded && !selectionMode ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : !selectionMode ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : null}
+          {expanded && !selectionMode ? <ChevronUp className="w-4 h-4 opacity-60" /> : !selectionMode ? <ChevronDown className="w-4 h-4 opacity-60" /> : null}
         </div>
       </div>
 
@@ -319,7 +342,7 @@ export function TaskCard({
                         {subtask.completed && <Check className="w-2.5 h-2.5" />}
                       </div>
                     </button>
-                    <span className={cn('text-xs flex-1', subtask.completed && 'line-through text-muted-foreground')}>
+                    <span className={cn('text-xs flex-1', subtask.completed && 'line-through opacity-60')}>
                       {subtask.title}
                     </span>
                     <button onClick={(e) => { e.stopPropagation(); handleRemoveSubtask(subtask.id); }}
@@ -336,7 +359,7 @@ export function TaskCard({
             <div className="flex items-center gap-2 mb-2 px-1" onClick={(e) => e.stopPropagation()}>
               <input autoFocus value={newSubtaskTitle} onChange={(e) => setNewSubtaskTitle(e.target.value)}
                 placeholder="عنوان سابتسک..."
-                className="flex-1 text-xs bg-muted border border-border rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-ring"
+                className="flex-1 text-xs bg-muted text-foreground border border-border rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-ring"
                 onKeyDown={(e) => { if (e.key === 'Enter') handleAddSubtask(); if (e.key === 'Escape') { setShowAddSubtask(false); setNewSubtaskTitle(''); } }} />
               <button onClick={handleAddSubtask} className="p-1.5 rounded-lg bg-primary text-primary-foreground hover:opacity-90">
                 <Check className="w-3 h-3" />
@@ -347,9 +370,15 @@ export function TaskCard({
             </div>
           ) : (
             <button onClick={(e) => { e.stopPropagation(); setShowAddSubtask(true); }}
-              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-2 px-1">
+              className="flex items-center gap-1.5 text-xs opacity-65 hover:opacity-100 transition-opacity mb-2 px-1">
               <Plus className="w-3 h-3" /> افزودن سابتسک
             </button>
+          )}
+
+          {showColorPicker && (
+            <div className="flex items-center gap-2 mb-2 px-1 pt-2 border-t border-border/30" onClick={(e) => e.stopPropagation()}>
+              <ColorSwatches value={task.color || ''} onPick={handlePickColor} />
+            </div>
           )}
 
           <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border/30">
@@ -359,6 +388,7 @@ export function TaskCard({
             <QuickBtn label="تاریخ دلخواه" onClick={() => setShowDatePicker(true)} />
             <QuickBtn label="کپی لینک‌شده" onClick={() => setShowCopyModal(true)} />
             <QuickBtn label={effectiveReminder ? 'تغییر هشدار' : 'هشدار'} onClick={openReminderModal} variant={effectiveReminder ? 'primary' : undefined} />
+            <QuickBtn label="رنگ کارت" onClick={() => setShowColorPicker(!showColorPicker)} />
             <QuickBtn label="جزئیات" onClick={() => { setSelectedTask(task); setShowTaskDetail(true); }} variant="primary" />
             {onDelete && (
               <QuickBtn label="حذف" onClick={() => onDelete(task)} variant="danger" />
@@ -367,7 +397,7 @@ export function TaskCard({
             {showDatePicker && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowDatePicker(false)} />
-                <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-card border-2 border-border rounded-xl shadow-2xl p-4 animate-scale-in w-72">
+                <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-card text-foreground border-2 border-border rounded-xl shadow-2xl p-4 animate-scale-in w-72">
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-sm font-medium">انتخاب تاریخ</span>
                     <button onClick={() => setShowDatePicker(false)} className="p-1 rounded hover:bg-muted">
@@ -388,7 +418,7 @@ export function TaskCard({
             {showCopyModal && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowCopyModal(false)} />
-                <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-card border-2 border-border rounded-xl shadow-2xl p-4 animate-scale-in w-72">
+                <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-card text-foreground border-2 border-border rounded-xl shadow-2xl p-4 animate-scale-in w-72">
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-sm font-medium">کپی لینک‌شده به تاریخ</span>
                     <button onClick={() => setShowCopyModal(false)} className="p-1 rounded hover:bg-muted">
@@ -410,7 +440,7 @@ export function TaskCard({
             {showReminderModal && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowReminderModal(false)} />
-                <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-card border-2 border-border rounded-xl shadow-2xl p-4 animate-scale-in w-72">
+                <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-card text-foreground border-2 border-border rounded-xl shadow-2xl p-4 animate-scale-in w-72">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-sm font-medium">هشدار تسک</span>
                     <button onClick={() => setShowReminderModal(false)} className="p-1 rounded hover:bg-muted">
