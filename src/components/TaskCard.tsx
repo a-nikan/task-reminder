@@ -294,30 +294,30 @@ export function TaskCard({
         )}
 
         <div className="flex flex-1 min-w-0 flex-col">
-          <div className={cn('text-sm font-medium leading-snug line-clamp-2', task.status === 'done' && 'line-through opacity-60')} title={task.title}>
+          <div className={cn('text-sm font-medium leading-snug line-clamp-3 break-words', task.status === 'done' && 'line-through opacity-60')} title={task.title}>
             {task.title}
           </div>
               <div className="flex items-center gap-2 flex-wrap mt-auto pt-2">
                 {showDate && displayDateLabel && (
-                  <span className={cn('text-[11px] flex items-center gap-1', !dateLabelColor && 'opacity-75', dateLabelColor)}>
+                  <span className={cn('text-xs sm:text-[11px] flex items-center gap-1', !dateLabelColor && 'opacity-75', dateLabelColor)}>
                     <Calendar className="w-3 h-3" /> {displayDateLabel}
                   </span>
                 )}
                 {task.time && (
-                  <span className="text-[11px] opacity-75 flex items-center gap-1">
+                  <span className="text-xs sm:text-[11px] opacity-75 flex items-center gap-1">
                     <Clock className="w-3 h-3" /> {task.time}
                   </span>
                 )}
                 {effectiveReminder && (
-                  <span className="text-[11px] font-medium flex items-center gap-0.5">
+                  <span className="text-xs sm:text-[11px] font-medium flex items-center gap-0.5">
                     <Bell className="w-3 h-3" /> {reminderLabel}
                   </span>
                 )}
                 {task.linked_id && (
-                  <span className="text-[11px] opacity-75 flex items-center gap-0.5"><Copy className="w-3 h-3" /> لینک‌شده</span>
+                  <span className="text-xs sm:text-[11px] opacity-75 flex items-center gap-0.5"><Copy className="w-3 h-3" /> لینک‌شده</span>
                 )}
                 {task.subtasks && task.subtasks.length > 0 && (
-                  <span className="text-[11px] opacity-75 flex items-center gap-0.5">
+                  <span className="text-xs sm:text-[11px] opacity-75 flex items-center gap-0.5">
                     <CheckSquare className="w-3 h-3" />
                     {task.subtasks.filter((s: Subtask) => s.completed).length}/{task.subtasks.length}
                   </span>
@@ -399,14 +399,14 @@ export function TaskCard({
 
           {reminderOverdue && (
             <div className="flex items-center gap-1.5 flex-wrap pt-2 mt-1 border-t border-amber-500/30" onClick={(e) => e.stopPropagation()}>
-              <span className="text-[11px] text-amber-500 flex items-center gap-1">
+              <span className="text-xs sm:text-[11px] text-amber-500 flex items-center gap-1">
                 <Clock className="w-3 h-3" /> یادآوری عقب افتاد:
               </span>
               {[5, 10, 30].map(m => (
                 <button
                   key={m}
                   onClick={() => handleSnoozeReminder(m)}
-                  className="px-2 py-1 rounded-lg bg-amber-500/10 border border-amber-500/25 text-[11px] text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition-colors"
+                  className="px-2 py-1 rounded-lg bg-amber-500/10 border border-amber-500/25 text-xs sm:text-[11px] text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition-colors"
                 >
                   {m === 5 ? '۵' : m === 10 ? '۱۰' : '۳۰'} دقیقه بعد
                 </button>
@@ -541,7 +541,7 @@ function QuickBtn({ label, onClick, variant }: { label: string; onClick: () => v
   return (
     <button onClick={(e) => { e.stopPropagation(); onClick(); }}
       className={cn(
-        'px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors',
+        'px-2.5 py-1 rounded-lg text-xs sm:text-[11px] font-medium transition-colors',
         variant === 'primary' ? 'bg-primary/15 text-primary hover:bg-primary/25' :
         variant === 'danger' ? 'bg-destructive/10 text-destructive hover:bg-destructive/20' :
         variant === 'info' ? 'bg-primary/10 text-primary hover:bg-primary/20' :

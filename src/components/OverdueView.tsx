@@ -94,7 +94,7 @@ export function OverdueView() {
             <p className="text-sm text-muted-foreground">تمام کارهای شما به‌موقع هستند</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3 items-start">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
             {tasks.map(task => {
               const days = Math.floor((new Date(getToday()).getTime() - new Date(task.date!).getTime()) / (1000 * 60 * 60 * 24));
               const label = days === 1 ? 'دیروز' : `${days} روز پیش`;

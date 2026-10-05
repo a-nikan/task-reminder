@@ -131,7 +131,7 @@ export function TodayView() {
           </div>
         </div>
 
-        <div className="grid grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
           <StatCard label="کل" value={totalTasks} color="text-foreground" />
           <StatCard label="انجام نشده" value={todoTasks.length} color="text-status-todo" />
           <StatCard label="در حال انجام" value={inProgressTasks.length} color="text-status-progress" />
@@ -204,7 +204,7 @@ function TaskSection({ title, status, tasks, onStatusChange, onToggleFavorite, o
         <h2 className="text-sm font-medium text-foreground">{title}</h2>
         <span className="text-xs text-muted-foreground">({tasks.length})</span>
       </div>
-      <div className="grid grid-cols-2 gap-3 items-start">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
         {tasks.map(task => (
           <TaskCard
             key={task.id}

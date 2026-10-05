@@ -93,7 +93,7 @@ export function ImportantView() {
             <p className="text-sm text-muted-foreground">روی ستاره تسک‌ها کلیک کنید تا مهم شوند</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3 items-start">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
             {tasks.map(task => (
               <TaskCard
                 key={task.id}

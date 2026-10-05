@@ -318,7 +318,7 @@ export function CalendarView() {
                 <p className="text-sm text-muted-foreground">در این روز تسکی ثبت نشده</p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-3 items-start">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
                 {dayTasks.map(task => (
                   <TaskCard
                     key={task.id}
