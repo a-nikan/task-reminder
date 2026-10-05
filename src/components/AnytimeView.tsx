@@ -94,7 +94,7 @@ export function AnytimeView() {
             <button onClick={() => setShowNewTaskForm(true)} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90">ایجاد تسک</button>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-3 items-start">
             {tasks.map(task => (
               <TaskCard
                 key={task.id}

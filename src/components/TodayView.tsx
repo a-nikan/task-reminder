@@ -204,7 +204,7 @@ function TaskSection({ title, status, tasks, onStatusChange, onToggleFavorite, o
         <h2 className="text-sm font-medium text-foreground">{title}</h2>
         <span className="text-xs text-muted-foreground">({tasks.length})</span>
       </div>
-      <div className="space-y-2">
+      <div className="grid grid-cols-2 gap-3 items-start">
         {tasks.map(task => (
           <TaskCard
             key={task.id}

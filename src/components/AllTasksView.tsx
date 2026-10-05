@@ -148,7 +148,7 @@ export function AllTasksView() {
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-3 items-start">
             {filteredTasks.map(task => (
               <TaskCard
                 key={task.id}

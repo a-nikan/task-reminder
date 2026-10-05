@@ -46,6 +46,14 @@ function toLocalInput(iso: string | null | undefined): { date: string; time: str
   };
 }
 
+const FALLBACK_PALETTE = ['#8b5cf6', '#3b82f6', '#10b981', '#ec4899', '#f97316'];
+
+function fallbackAccent(id: string): string {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) | 0;
+  return FALLBACK_PALETTE[Math.abs(hash) % FALLBACK_PALETTE.length];
+}
+
 export function TaskCard({
   task,
   onStatusChange,
@@ -63,6 +71,7 @@ export function TaskCard({
   onReminderChanged,
 }: TaskCardProps) {
   const { refreshCurrentView, showToast, setSelectedTask, setShowTaskDetail, settings, setEditingTask, setShowEditTaskForm } = useStore();
+  const categories = useStore((s) => s.categories);
   const [expanded, setExpanded] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [newDate, setNewDate] = useState('');
@@ -183,20 +192,41 @@ export function TaskCard({
 
   const effectiveReminder = reminderAt ?? (task as any).reminder ?? null;
   const reminderLabel = formatReminderLocalized(effectiveReminder, settings.calendarType);
+  const catColor = task.category_id
+    ? categories.find((c) => c.id === task.category_id)?.color
+    : undefined;
+  const accent = catColor || fallbackAccent(task.id);
+  const customBorder = borderColor !== 'border-border/50';
   const displayDateLabel = dateLabel && /^\d{4}-\d{2}-\d{2}$/.test(dateLabel)
     ? formatTaskDateLocalized(dateLabel, settings.calendarType)
     : dateLabel;
 
   return (
-    <div className={cn(
-      'rounded-xl border bg-card transition-all duration-200 group',
-      borderColor,
-      task.status === 'done' && 'opacity-60',
-      expanded && !selectionMode && 'ring-1 ring-primary/30',
-      selected && 'ring-2 ring-primary border-primary'
-    )}>
+    <div
+      className={cn(
+        'relative rounded-2xl border-2 bg-card transition-all duration-200 group flex flex-col min-h-[150px]',
+        'shadow-[0_2px_10px_-5px_rgba(0,0,0,0.18)]',
+        borderColor,
+        task.status === 'done' && 'opacity-60',
+        expanded && !selectionMode && 'ring-1 ring-primary/30',
+        selected && 'ring-2 ring-primary',
+        !expanded && !selectionMode &&
+          'hover:-translate-y-0.5 hover:rotate-[-0.4deg] hover:shadow-[0_10px_24px_-8px_rgba(0,0,0,0.28)]'
+      )}
+      style={{
+        borderColor: customBorder ? undefined : `${accent}59`,
+        background: `linear-gradient(165deg, ${accent}26 0%, ${accent}0f 55%, transparent 100%)`,
+      }}
+    >
+      {effectiveReminder && (
+        <span className="pointer-events-none absolute -top-2 -left-2 z-20 animate-badge-pop">
+          <span className="flex w-7 h-7 items-center justify-center rounded-full border-2 border-background bg-amber-500 text-white shadow-[0_4px_12px_rgba(245,158,11,0.5)]">
+            <Clock className="w-3.5 h-3.5" />
+          </span>
+        </span>
+      )}
       <div
-        className={cn('flex items-start gap-3 p-3 cursor-pointer', hoverBg)}
+        className={cn('flex items-stretch gap-2.5 p-3 cursor-pointer', hoverBg)}
         onClick={handleCardClick}
       >
         {selectionMode ? (
@@ -224,11 +254,11 @@ export function TaskCard({
           </button>
         )}
 
-        <div className="flex-1 min-w-0">
-          <div className={cn('text-sm font-medium', task.status === 'done' && 'line-through text-muted-foreground')}>
+        <div className="flex flex-1 min-w-0 flex-col">
+          <div className={cn('text-sm font-medium leading-snug line-clamp-2', task.status === 'done' && 'line-through text-muted-foreground')} title={task.title}>
             {task.title}
           </div>
-              <div className="flex items-center gap-2 mt-1 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap mt-auto pt-2">
                 {showDate && displayDateLabel && (
                   <span className={cn('text-[11px] flex items-center gap-1', dateLabelColor)}>
                     <Calendar className="w-3 h-3" /> {displayDateLabel}
@@ -256,7 +286,7 @@ export function TaskCard({
               </div>
         </div>
 
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-start gap-1 shrink-0">
           {!selectionMode && (
             <button onClick={(e) => { e.stopPropagation(); openFullEdit(); }} title="ویرایش کامل"
               className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-muted transition-all">

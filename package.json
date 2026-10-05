@@ -1,6 +1,6 @@
 {
   "name": "task-reminder",
-  "version": "2.1.1",
+  "version": "2.2.0",
   "description": "Professional Desktop Task Manager + Todo List + Calendar + Reminder",
   "main": "dist-electron/main.js",
   "scripts": {
