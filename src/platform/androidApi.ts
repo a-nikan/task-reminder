@@ -672,6 +672,8 @@ export function createAndroidApi(): Window['electronAPI'] {
     widgetClose: async () => ({ success: false as const }),
     widgetSetOnTop: async () => ({ success: false as const }),
     showTaskInMain: async () => ({ success: false as const }),
+    notifyWidgetChanged: async () => ({ success: true as const }),
+    onTasksChanged: () => {},
 
     onNewTask: callback => {
       listeners.newTask.push(callback);

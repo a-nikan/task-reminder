@@ -97,4 +97,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   widgetClose: (taskId: string) => ipcRenderer.invoke('widget:close', taskId),
   widgetSetOnTop: (taskId: string, onTop: boolean) => ipcRenderer.invoke('widget:setOnTop', taskId, onTop),
   showTaskInMain: (taskId: string) => ipcRenderer.invoke('widget:showTask', taskId),
+  notifyWidgetChanged: (taskId: string) => ipcRenderer.invoke('widget:changed', taskId),
+  onTasksChanged: (callback: (taskId: string) => void) =>
+    ipcRenderer.on('tasks:changed', (_event, taskId) => callback(taskId)),
 });

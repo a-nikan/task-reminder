@@ -77,6 +77,23 @@ export default function App() {
       }
     });
 
+    window.electronAPI.onTasksChanged(async (taskId) => {
+      try {
+        await refreshCurrentView();
+        const sel = useStore.getState().selectedTask;
+        if (sel && (!taskId || sel.id === taskId)) {
+          const updated = await window.electronAPI.getTaskById(sel.id).catch(() => null);
+          if (updated) useStore.getState().setSelectedTask(updated);
+          else {
+            useStore.getState().setSelectedTask(null);
+            useStore.getState().setShowTaskDetail(false);
+          }
+        }
+      } catch {
+        // ignore
+      }
+    });
+
     window.electronAPI.onNavigateTo((viewName: string) => {
       const validViews = ['today', 'calendar', 'all', 'anytime', 'overdue', 'important', 'settings'];
       if (validViews.includes(viewName)) {

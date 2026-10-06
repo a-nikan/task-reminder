@@ -220,9 +220,9 @@ export function TaskCard({
     new Date(effectiveReminder).getTime() <= Date.now();
   const isNative = typeof (window as any).Capacitor !== 'undefined' && !!(window as any).Capacitor.isNativePlatform?.();
   const isPinned = !!(task as any).pinned;
+  const hasStrip = !!task.subtasks && task.subtasks.length > 0;
   const accent = task.color || fallbackAccent(task.id);
   const onColor = pickOnColor(accent);
-  const customBorder = borderColor !== 'border-border/50';
   const displayDateLabel = dateLabel && /^\d{4}-\d{2}-\d{2}$/.test(dateLabel)
     ? formatTaskDateLocalized(dateLabel, settings.calendarType)
     : dateLabel;
@@ -232,7 +232,8 @@ export function TaskCard({
       !expanded && !selectionMode && 'hover:-translate-y-0.5 hover:rotate-[-0.4deg]')}>
     <div
       className={cn(
-        'relative rounded-2xl border-2 bg-card transition-all duration-200 group flex flex-col min-h-[150px]',
+        'relative rounded-t-2xl bg-card transition-all duration-200 group flex flex-col min-h-[150px]',
+        hasStrip ? 'rounded-b-none' : 'rounded-b-2xl',
         'shadow-[0_2px_10px_-5px_rgba(0,0,0,0.18)]',
         borderColor,
         task.status === 'done' && 'opacity-60',
@@ -242,7 +243,6 @@ export function TaskCard({
           'hover:shadow-[0_10px_24px_-8px_rgba(0,0,0,0.28)]'
       )}
       style={{
-        borderColor: customBorder ? undefined : accent,
         background: cardGradient(accent, getTransparency(settings, CARD_TRANSPARENCY_KEY, 0)),
         color: onColor,
       }}
@@ -513,7 +513,7 @@ export function TaskCard({
       )}
 
     </div>
-      {task.subtasks && task.subtasks.length > 0 && (
+      {hasStrip && (
         <div
           className="flex gap-[3px] h-3.5 px-[3px] -mt-[2px] mx-[2px] border-x-2 border-b-2 overflow-hidden"
           style={{ borderColor: accent, backgroundColor: `${accent}1f` }}

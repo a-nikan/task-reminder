@@ -111,11 +111,21 @@ export function openTaskWidget(taskId: string): { success: boolean; reason?: str
     if (!win.isDestroyed()) win.show();
   });
   const persist = () => saveGeometry(taskId, win);
+  const notifyMain = () => {
+    try {
+      if (mainWindowRef && !mainWindowRef.isDestroyed()) {
+        mainWindowRef.webContents.send('tasks:changed', taskId);
+      }
+    } catch {
+      // ignore
+    }
+  };
   win.on('moved', persist);
   win.on('resized', persist);
   win.on('close', persist);
   win.on('closed', () => {
     widgetWindows.delete(taskId);
+    notifyMain();
   });
   return { success: true };
 }
@@ -159,6 +169,17 @@ export function setupWidgetIpc(): void {
   ipcMain.handle('widget:open', (_event, taskId: string) => openTaskWidget(taskId));
   ipcMain.handle('widget:close', (_event, taskId: string) => closeTaskWidget(taskId));
   ipcMain.handle('widget:setOnTop', (_event, taskId: string, onTop: boolean) => setWidgetOnTop(taskId, onTop));
+  ipcMain.handle('widget:changed', (event, taskId: string) => {
+    try {
+      const senderId = event.sender.id;
+      if (mainWindowRef && !mainWindowRef.isDestroyed() && mainWindowRef.webContents.id !== senderId) {
+        mainWindowRef.webContents.send('tasks:changed', taskId);
+      }
+      return { success: true };
+    } catch {
+      return { success: false };
+    }
+  });
   ipcMain.handle('widget:showTask', (_event, taskId: string) => {
     try {
       if (mainWindowRef && !mainWindowRef.isDestroyed()) {

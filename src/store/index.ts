@@ -61,6 +61,8 @@ declare global {
       widgetClose: (taskId: string) => Promise<any>;
       widgetSetOnTop: (taskId: string, onTop: boolean) => Promise<any>;
       showTaskInMain: (taskId: string) => Promise<any>;
+      notifyWidgetChanged: (taskId: string) => Promise<any>;
+      onTasksChanged: (callback: (taskId: string) => void) => void;
       copyLinkedTask: (taskId: string, newDate: string) => Promise<Task>;
       toggleSubtask: (taskId: string, subtaskId: string) => Promise<Task>;
       addSubtask: (taskId: string, title: string) => Promise<Task>;

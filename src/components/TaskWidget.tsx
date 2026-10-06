@@ -63,7 +63,7 @@ export function TaskWidget({ taskId }: { taskId: string }) {
 
   const accent = (task as any).color || fallbackAccent(task.id);
   const onColor = pickOnColor(accent);
-  const transparency = getTransparency(settings, WIDGET_TRANSPARENCY_KEY, 60);
+  const transparency = getTransparency(settings, WIDGET_TRANSPARENCY_KEY, 0);
   const effectiveReminder = reminder ? reminder.snoozed_until || reminder.remind_at : (task as any).reminder;
   const reminderOverdue =
     !!effectiveReminder &&
@@ -74,12 +74,14 @@ export function TaskWidget({ taskId }: { taskId: string }) {
   const cycleStatus = async () => {
     const next: Record<TaskStatus, TaskStatus> = { todo: 'in_progress', in_progress: 'done', done: 'todo' };
     await window.electronAPI.changeTaskStatus(task.id, next[task.status]);
+    await window.electronAPI.notifyWidgetChanged(task.id);
     await load();
     refreshCurrentView();
   };
 
   const handleToggleSubtask = async (subtaskId: string) => {
     await window.electronAPI.toggleSubtask(task.id, subtaskId);
+    await window.electronAPI.notifyWidgetChanged(task.id);
     await load();
     refreshCurrentView();
   };
@@ -88,6 +90,7 @@ export function TaskWidget({ taskId }: { taskId: string }) {
     await window.electronAPI.snoozeReminder(task.id, minutes);
     const labels: Record<number, string> = { 5: '۵', 10: '۱۰', 30: '۳۰' };
     showToast(`⏳ ${labels[minutes] || minutes} دقیقه بعد دوباره یادآوری می‌شود`, 'info');
+    await window.electronAPI.notifyWidgetChanged(task.id);
     await load();
     refreshCurrentView();
   };
@@ -110,15 +113,15 @@ export function TaskWidget({ taskId }: { taskId: string }) {
       // task may already be gone
     }
     refreshCurrentView();
+    await window.electronAPI.notifyWidgetChanged(task.id);
     await window.electronAPI.widgetClose(task.id);
   };
 
   return (
     <div className="h-screen w-screen bg-transparent p-1.5 overflow-hidden">
       <div
-        className="h-full flex flex-col rounded-2xl border-2 overflow-hidden"
+        className="h-full flex flex-col rounded-2xl overflow-hidden"
         style={{
-          borderColor: accent,
           background: cardGradient(accent, transparency),
           color: onColor,
         }}

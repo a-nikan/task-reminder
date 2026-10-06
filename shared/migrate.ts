@@ -67,8 +67,9 @@ export function seedDefaultData(database: DatabaseSchema): void {
       onboardingComplete: 'false',
       calendarType: 'gregorian',
       cardTransparency: '0',
-      widgetTransparency: '60',
+      widgetTransparency: '0',
     };
   }
   if (!database.settings.calendarType) database.settings.calendarType = 'gregorian';
+  if (!database.settings.widgetTransparency) database.settings.widgetTransparency = '0';
 }

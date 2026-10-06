@@ -56,7 +56,7 @@ export function SettingsView() {
   const [draftAccent, setDraftAccent] = useState(accentColor);
   const [draftCalendar, setDraftCalendar] = useState(settings.calendarType || 'gregorian');
   const [draftCardT, setDraftCardT] = useState(settings.cardTransparency || '0');
-  const [draftWidgetT, setDraftWidgetT] = useState(settings.widgetTransparency || '60');
+  const [draftWidgetT, setDraftWidgetT] = useState(settings.widgetTransparency || '0');
   const [draftShowOnStartup, setDraftShowOnStartup] = useState(settings.showOnStartup !== 'false');
   const [draftMorning, setDraftMorning] = useState(settings.morningNotification !== 'false');
   const [draftAutoLaunch, setDraftAutoLaunch] = useState(false);
@@ -126,7 +126,7 @@ export function SettingsView() {
     setDraftAccent(accentColor);
     setDraftCalendar(settings.calendarType || 'gregorian');
     setDraftCardT(settings.cardTransparency || '0');
-    setDraftWidgetT(settings.widgetTransparency || '60');
+    setDraftWidgetT(settings.widgetTransparency || '0');
     setDraftShowOnStartup(settings.showOnStartup !== 'false');
     setDraftMorning(settings.morningNotification !== 'false');
   }, [settings, theme, accentColor]);
@@ -145,7 +145,7 @@ export function SettingsView() {
       draftAccent !== accentColor ||
       draftCalendar !== (settings.calendarType || 'gregorian') ||
       draftCardT !== (settings.cardTransparency || '0') ||
-      draftWidgetT !== (settings.widgetTransparency || '60') ||
+      draftWidgetT !== (settings.widgetTransparency || '0') ||
       draftShowOnStartup !== (settings.showOnStartup !== 'false') ||
       draftMorning !== (settings.morningNotification !== 'false') ||
       draftAutoLaunch !== persistedAutoLaunch
@@ -161,7 +161,7 @@ export function SettingsView() {
       const patch: Record<string, string> = {};
       if (draftCalendar !== (settings.calendarType || 'gregorian')) patch.calendarType = draftCalendar;
       if (draftCardT !== (settings.cardTransparency || '0')) patch.cardTransparency = draftCardT;
-      if (draftWidgetT !== (settings.widgetTransparency || '60')) patch.widgetTransparency = draftWidgetT;
+      if (draftWidgetT !== (settings.widgetTransparency || '0')) patch.widgetTransparency = draftWidgetT;
       if (String(draftShowOnStartup) !== String(settings.showOnStartup !== 'false')) patch.showOnStartup = String(draftShowOnStartup);
       if (String(draftMorning) !== String(settings.morningNotification !== 'false')) patch.morningNotification = String(draftMorning);
       if (Object.keys(patch).length > 0) await updateSettings(patch);
@@ -181,7 +181,7 @@ export function SettingsView() {
     setDraftAccent(accentColor);
     setDraftCalendar(settings.calendarType || 'gregorian');
     setDraftCardT(settings.cardTransparency || '0');
-    setDraftWidgetT(settings.widgetTransparency || '60');
+    setDraftWidgetT(settings.widgetTransparency || '0');
     setDraftShowOnStartup(settings.showOnStartup !== 'false');
     setDraftMorning(settings.morningNotification !== 'false');
     setDraftAutoLaunch(persistedAutoLaunch);
