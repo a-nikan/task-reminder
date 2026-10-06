@@ -468,6 +468,9 @@ export function SettingsView() {
             <h2 className="text-xl font-bold mb-1">Nick Task Reminder</h2>
             <p className="text-muted-foreground text-sm mb-2">نسخه {appVersion}</p>
             <p className="text-muted-foreground text-xs">برنامه مدیریت وظایف و یادآوری</p>
+            <p className="text-muted-foreground text-xs mt-2">سازنده: احمد نیکان</p>
+            <a href="mailto:ahmad.nkn86@gmail.com" dir="ltr" className="text-primary text-xs hover:underline">ahmad.nkn86@gmail.com</a>
+            <p className="text-muted-foreground text-[11px] mt-2">© ۲۰۲۶ — استفاده رایگان؛ انتشار به نام خود ممنوع</p>
           </div>
         )}
       </div>

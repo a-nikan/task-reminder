@@ -1,7 +1,12 @@
 {
   "name": "task-reminder",
-  "version": "2.6.1",
+  "version": "2.6.2",
   "description": "Professional Desktop Task Manager + Todo List + Calendar + Reminder",
+  "author": {
+    "name": "Ahmad Nikan",
+    "email": "ahmad.nkn86@gmail.com"
+  },
+  "license": "SEE LICENSE IN LICENSE",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
@@ -49,6 +54,7 @@
   "build": {
     "appId": "com.taskreminder.app",
     "productName": "Nick Task Reminder",
+    "copyright": "Copyright © 2026 Ahmad Nikan",
     "directories": {
       "output": "release"
     },

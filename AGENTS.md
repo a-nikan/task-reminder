@@ -14,7 +14,7 @@ The assistant bumps the app version itself whenever a new build/release with cha
 ## Build commands (PowerShell — no `&&`; bash tool needs explicit long timeouts)
 - Typecheck: `npx tsc --noEmit`
 - Web + Electron: `npx vite build` (outputs `dist/`, `dist-electron/`) then `npx cap sync android`
-- Android APK: in `android/` dir with `$env:JAVA_HOME="C:\tools\jdk-21.0.12.1+1"; $env:ANDROID_HOME="$env:LOCALAPPDATA\Android\Sdk"; .\gradlew.bat assembleDebug --console=plain` (timeout ≥ 600000 ms) → copy `app\build\outputs\apk\debug\app-debug.apk` to `release\Nick Task Reminder Android <ver>.apk`
+- Android APK: in `android/` dir with `$env:JAVA_HOME="C:\Program Files\Microsoft\jdk-21.0.12.101-hotspot"; $env:ANDROID_HOME="$env:LOCALAPPDATA\Android\Sdk"; .\gradlew.bat assembleDebug --console=plain` (timeout ≥ 600000 ms) → copy `app\build\outputs\apk\debug\app-debug.apk` to `release\Nick Task Reminder Android <ver>.apk`
 - Windows installer: `$env:CSC_IDENTITY_AUTO_DISCOVERY="false"; $env:CSC_LINK=""; npx electron-builder --win --x64` (timeout ≥ 900000 ms) → `release\Nick Task Reminder Setup <ver>.exe`
 
 ## Conventions
