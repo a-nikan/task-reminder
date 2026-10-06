@@ -267,7 +267,9 @@ export function getTaskById(db: DatabaseSchema, id: string): Task | null {
 }
 
 export function getTasksByDate(db: DatabaseSchema, date: string): Task[] {
-  return sortByOrder(db.tasks.filter(t => t.date === date && !t.archived));
+  return sortByOrder(db.tasks.filter(t =>
+    !t.archived && (t.date === date || (!t.date && t.status !== 'done'))
+  ));
 }
 
 export function getOverdueTasks(db: DatabaseSchema): Task[] {
@@ -294,7 +296,9 @@ export function searchTasks(db: DatabaseSchema, query: string): Task[] {
 
 export function getTodayTasks(db: DatabaseSchema): Task[] {
   const today = nowIso().split('T')[0];
-  return sortByOrder(db.tasks.filter(t => t.date === today && !t.archived));
+  return sortByOrder(db.tasks.filter(t =>
+    !t.archived && (t.date === today || (!t.date && t.status !== 'done'))
+  ));
 }
 
 export function getCalendarTasks(db: DatabaseSchema, startDate: string, endDate: string): Task[] {

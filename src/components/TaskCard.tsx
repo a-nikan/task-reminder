@@ -420,11 +420,11 @@ export function TaskCard({
             <QuickBtn label="بدون تاریخ" onClick={() => handleMoveToDate(null as any)} />
             <QuickBtn label="تاریخ دلخواه" onClick={() => setShowDatePicker(true)} />
             <QuickBtn label="کپی لینک‌شده" onClick={() => setShowCopyModal(true)} />
-            <QuickBtn label={effectiveReminder ? 'تغییر هشدار' : 'هشدار'} onClick={openReminderModal} variant={effectiveReminder ? 'primary' : undefined} />
+            <QuickBtn label={effectiveReminder ? 'تغییر هشدار' : 'هشدار'} onClick={openReminderModal} variant={effectiveReminder ? 'primary' : undefined} onColor={onColor} accent={accent} />
             <QuickBtn label="رنگ کارت" onClick={() => setShowColorPicker(!showColorPicker)} />
-            <QuickBtn label="جزئیات" onClick={() => { setSelectedTask(task); setShowTaskDetail(true); }} variant="primary" />
+            <QuickBtn label="جزئیات" onClick={() => { setSelectedTask(task); setShowTaskDetail(true); }} variant="primary" onColor={onColor} accent={accent} />
             {onDelete && (
-              <QuickBtn label="حذف" onClick={() => onDelete(task)} variant="danger" />
+              <QuickBtn label="حذف" onClick={() => onDelete(task)} variant="danger" onColor={onColor} accent={accent} />
             )}
 
             {showDatePicker && (
@@ -537,7 +537,20 @@ export function TaskCard({
   );
 }
 
-function QuickBtn({ label, onClick, variant }: { label: string; onClick: () => void; variant?: 'primary' | 'danger' | 'info' }) {
+function QuickBtn({ label, onClick, variant, onColor, accent }: { label: string; onClick: () => void; variant?: 'primary' | 'danger' | 'info'; onColor?: string; accent?: string }) {
+  // On colored cards, theme-tinted chips (primary/danger) can clash with the
+  // card gradient. Solid onColor chips guarantee contrast on any card color:
+  // primary text reuses the card accent, danger keeps red readable on the chip.
+  if (onColor && accent && (variant === 'primary' || variant === 'danger')) {
+    const fg = variant === 'primary' ? accent : (onColor === '#ffffff' ? '#dc2626' : '#f87171');
+    return (
+      <button onClick={(e) => { e.stopPropagation(); onClick(); }}
+        style={{ backgroundColor: onColor, color: fg }}
+        className="px-2.5 py-1 rounded-lg text-xs sm:text-[11px] font-medium transition-opacity hover:opacity-80">
+        {label}
+      </button>
+    );
+  }
   return (
     <button onClick={(e) => { e.stopPropagation(); onClick(); }}
       className={cn(
