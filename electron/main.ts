@@ -4,6 +4,7 @@ import { initDatabase, getDatabase } from './database';
 import { setupIpcHandlers } from './ipc-handlers';
 import { setupNotifications } from './notifications';
 import { startLanServer } from './lanServer';
+import { setupWidgetIpc, restoreWidgets, setWidgetMainWindow } from './widgets';
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
@@ -66,7 +67,9 @@ function createWindow(): void {
 
   mainWindow.on('closed', () => {
     mainWindow = null;
+    setWidgetMainWindow(null);
   });
+  setWidgetMainWindow(mainWindow);
 }
 
 function createTray(): void {
@@ -113,6 +116,8 @@ app.whenReady().then(() => {
   setupIpcHandlers(mainWindow);
   setupNotifications(mainWindow);
   startLanServer();
+  setupWidgetIpc();
+  restoreWidgets();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

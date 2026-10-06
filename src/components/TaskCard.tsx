@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useStore } from '../store';
-import { cn, getToday, getTomorrow, formatTaskDateLocalized, formatReminderLocalized } from '../utils';
+import { cn, getToday, getTomorrow, formatTaskDateLocalized, formatReminderLocalized, fallbackAccent, pickOnColor, cardGradient, getTransparency, CARD_TRANSPARENCY_KEY } from '../utils';
 import type { Task, TaskStatus, Subtask } from '../types';
-import { Check, Clock, Star, ChevronDown, ChevronUp, Edit2, Copy, CheckSquare, Plus, Trash2, X, Calendar, Bell, BellOff } from 'lucide-react';
+import { Check, Clock, Star, ChevronDown, ChevronUp, Edit2, Copy, CheckSquare, Plus, Trash2, X, Calendar, Bell, BellOff, Pin, PinOff } from 'lucide-react';
 import { DateInput } from './DateInput';
 import { ColorSwatches } from './ColorSwatches';
 import { followReminderAfterMove, armReminderIfFuture } from './TaskForm';
@@ -46,30 +46,6 @@ function toLocalInput(iso: string | null | undefined): { date: string; time: str
     date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
     time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
   };
-}
-
-const FALLBACK_PALETTE = ['#8b5cf6', '#3b82f6', '#10b981', '#ec4899', '#f97316'];
-
-function fallbackAccent(id: string): string {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) | 0;
-  return FALLBACK_PALETTE[Math.abs(hash) % FALLBACK_PALETTE.length];
-}
-
-function colorBrightness(hex: string): number {
-  const m = hex.replace('#', '');
-  const r = parseInt(m.slice(0, 2), 16);
-  const g = parseInt(m.slice(2, 4), 16);
-  const b = parseInt(m.slice(4, 6), 16);
-  return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-}
-
-function pickOnColor(accent: string): string {
-  const isDark =
-    typeof document !== 'undefined' &&
-    document.documentElement.classList.contains('dark');
-  const eff = colorBrightness(accent) * 0.85 + (isDark ? 0.04 : 0.96) * 0.15;
-  return eff > 0.42 ? '#16161d' : '#ffffff';
 }
 
 export function TaskCard({
@@ -167,6 +143,16 @@ export function TaskCard({
     onReminderChanged?.();
   };
 
+  const handleTogglePin = async () => {
+    const pinned = (task as any).pinned ? 0 : 1;
+    await window.electronAPI.updateTask(task.id, { pinned });
+    if (pinned) await window.electronAPI.widgetOpen(task.id);
+    else await window.electronAPI.widgetClose(task.id);
+    showToast(pinned ? 'ویجت دسکتاپ باز شد' : 'ویجت دسکتاپ بسته شد', 'info');
+    refreshCurrentView();
+    onReminderChanged?.();
+  };
+
   const handleToggleSubtask = async (subtaskId: string) => {
     if (task.linked_id) {
       await window.electronAPI.toggleSubtask(task.id, subtaskId);
@@ -232,6 +218,8 @@ export function TaskCard({
   const reminderOverdue = !!effectiveReminder &&
     task.status !== 'done' &&
     new Date(effectiveReminder).getTime() <= Date.now();
+  const isNative = typeof (window as any).Capacitor !== 'undefined' && !!(window as any).Capacitor.isNativePlatform?.();
+  const isPinned = !!(task as any).pinned;
   const accent = task.color || fallbackAccent(task.id);
   const onColor = pickOnColor(accent);
   const customBorder = borderColor !== 'border-border/50';
@@ -253,7 +241,7 @@ export function TaskCard({
       )}
       style={{
         borderColor: customBorder ? undefined : accent,
-        background: `linear-gradient(165deg, ${accent}e6 0%, ${accent}d9 55%, ${accent}cc 100%)`,
+        background: cardGradient(accent, getTransparency(settings, CARD_TRANSPARENCY_KEY, 0)),
         color: onColor,
       }}
     >
@@ -261,6 +249,14 @@ export function TaskCard({
         <span className="pointer-events-none absolute -top-2 -left-2 z-20 animate-badge-pop">
           <span className="flex w-7 h-7 items-center justify-center rounded-full border-2 border-background bg-amber-500 text-white shadow-[0_4px_12px_rgba(245,158,11,0.5)]">
             <Clock className="w-3.5 h-3.5" />
+          </span>
+        </span>
+      )}
+      {isPinned && (
+        <span className="pointer-events-none absolute -top-2 -right-2 z-20 animate-badge-pop" title="ویجت دسکتاپ فعال است">
+          <span className="flex w-7 h-7 items-center justify-center rounded-full border-2 border-background shadow-[0_4px_12px_rgba(0,0,0,0.3)]"
+            style={{ backgroundColor: onColor, color: accent }}>
+            <Pin className="w-3.5 h-3.5" />
           </span>
         </span>
       )}
@@ -422,6 +418,9 @@ export function TaskCard({
             <QuickBtn label="کپی لینک‌شده" onClick={() => setShowCopyModal(true)} />
             <QuickBtn label={effectiveReminder ? 'تغییر هشدار' : 'هشدار'} onClick={openReminderModal} variant={effectiveReminder ? 'primary' : undefined} onColor={onColor} accent={accent} />
             <QuickBtn label="رنگ کارت" onClick={() => setShowColorPicker(!showColorPicker)} />
+            {!isNative && (
+              <QuickBtn label={isPinned ? 'بستن ویجت' : 'ویجت دسکتاپ'} onClick={handleTogglePin} variant={isPinned ? 'primary' : undefined} onColor={onColor} accent={accent} />
+            )}
             <QuickBtn label="جزئیات" onClick={() => { setSelectedTask(task); setShowTaskDetail(true); }} variant="primary" onColor={onColor} accent={accent} />
             {onDelete && (
               <QuickBtn label="حذف" onClick={() => onDelete(task)} variant="danger" onColor={onColor} accent={accent} />
@@ -513,19 +512,19 @@ export function TaskCard({
 
       {task.subtasks && task.subtasks.length > 0 && (
         <div
-          className="mt-auto flex gap-[3px] h-3.5 rounded-b-[14px] overflow-hidden"
+          className="mt-auto flex gap-[3px] h-3.5 overflow-hidden"
           style={{ borderTop: `1px dashed ${onColor}33` }}
           aria-hidden="true"
         >
           {task.subtasks.map((st: Subtask) => (
             <div key={st.id} className="relative flex-1 min-w-[3px]">
               <div
-                className="absolute inset-0 rounded-sm border border-dashed"
+                className="absolute inset-0 border border-dashed"
                 style={{ borderColor: `${onColor}59` }}
               />
               <div
                 className={cn(
-                  'absolute inset-0 rounded-sm bg-white/40 transition-all duration-300 ease-out shadow-[inset_0_-1px_2px_rgba(0,0,0,0.12)]',
+                  'absolute inset-0 bg-white/40 transition-all duration-300 ease-out shadow-[inset_0_-1px_2px_rgba(0,0,0,0.12)]',
                   st.completed && 'opacity-0 translate-y-4 rotate-6 scale-75'
                 )}
               />

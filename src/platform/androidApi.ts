@@ -667,6 +667,12 @@ export function createAndroidApi(): Window['electronAPI'] {
     getActiveReminders: () => run(d => getActiveRemindersInDb()),
     snoozeReminder: (taskId: string, minutes: number) => run(d => snoozeReminderInDb(taskId, minutes), true),
 
+    // Desktop widgets are Windows-only; no-ops on Android
+    widgetOpen: async () => ({ success: false as const }),
+    widgetClose: async () => ({ success: false as const }),
+    widgetSetOnTop: async () => ({ success: false as const }),
+    showTaskInMain: async () => ({ success: false as const }),
+
     onNewTask: callback => {
       listeners.newTask.push(callback);
     },

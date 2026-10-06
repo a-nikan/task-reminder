@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useStore } from '../store';
 import { cn, getStatusLabel, getPriorityLabel, getPriorityColor, getStatusBgColor, RECURRENCE_OPTIONS, REMINDER_OPTIONS, getToday, getTomorrow, formatTaskDateLocalized, formatReminderLocalized } from '../utils';
 import type { Task, TaskStatus, Subtask } from '../types';
-import { X, Check, Clock, Folder, Bell, Trash2, Archive, Star, Edit2, Link, Copy, Plus, CheckSquare, Tag, Repeat } from 'lucide-react';
+import { X, Check, Clock, Folder, Bell, Trash2, Archive, Star, Edit2, Link, Copy, Plus, CheckSquare, Tag, Repeat, Pin, PinOff } from 'lucide-react';
 import { DateInput } from './DateInput';
 import { ColorSwatches } from './ColorSwatches';
 import { followReminderAfterMove, armReminderIfFuture } from './TaskForm';
@@ -217,6 +217,17 @@ export function TaskDetailPanel() {
     reloadAll();
   };
 
+  const isNativePanel = typeof (window as any).Capacitor !== 'undefined' && !!(window as any).Capacitor.isNativePlatform?.();
+
+  const handleTogglePin = async () => {
+    const pinned = (task as any).pinned ? 0 : 1;
+    await window.electronAPI.updateTask(task.id, { pinned });
+    if (pinned) await window.electronAPI.widgetOpen(task.id);
+    else await window.electronAPI.widgetClose(task.id);
+    showToast(pinned ? 'ویجت دسکتاپ باز شد' : 'ویجت دسکتاپ بسته شد', 'info');
+    await refreshTask();
+  };
+
   const subtaskProgress = subtasks.length > 0
     ? Math.round((subtasks.filter(s => s.completed).length / subtasks.length) * 100)
     : 0;
@@ -227,6 +238,11 @@ export function TaskDetailPanel() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-medium text-muted-foreground">جزئیات تسک</h2>
           <div className="flex items-center gap-1">
+            {!isNativePanel && (
+              <button onClick={handleTogglePin} title={(task as any).pinned ? 'بستن ویجت دسکتاپ' : 'ویجت دسکتاپ'} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground transition-colors">
+                {(task as any).pinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
+              </button>
+            )}
             <button onClick={openFullEdit} title="ویرایش کامل" className="p-1.5 rounded-md hover:bg-muted text-muted-foreground transition-colors">
               <Edit2 className="w-4 h-4" />
             </button>

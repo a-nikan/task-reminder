@@ -9,6 +9,8 @@ export interface Settings {
   language: string;
   onboardingComplete: string;
   calendarType: string;
+  cardTransparency: string;
+  widgetTransparency: string;
 }
 
 export type ViewType = 'today' | 'calendar' | 'all' | 'anytime' | 'overdue' | 'important' | 'categories' | 'statistics' | 'settings' | 'category-detail';

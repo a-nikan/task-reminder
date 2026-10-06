@@ -19,6 +19,7 @@ export interface Task {
   reminder_offset: number;
   category_id: string | null;
   color: string | null;
+  pinned: number;
   tags: string[];
   subtasks: Subtask[];
   linked_id: string | null;

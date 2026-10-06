@@ -19,6 +19,7 @@ import { EditTaskModal } from './components/EditTaskModal';
 import { CommandPalette } from './components/CommandPalette';
 import { Toast } from './components/Toast';
 import { ReminderAlert } from './components/ReminderAlert';
+import { TaskWidget } from './components/TaskWidget';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { Onboarding } from './components/Onboarding';
 
@@ -84,8 +85,17 @@ export default function App() {
     });
   }, []);
 
-  const renderView = () => {
-    switch (view) {
+  const widgetMatch = window.location.hash.match(/^#\/widget\/(.+)$/);
+  if (widgetMatch) {
+    return (
+      <div className="h-screen w-screen overflow-hidden bg-transparent">
+        <TaskWidget taskId={decodeURIComponent(widgetMatch[1])} />
+        <Toast />
+      </div>
+    );
+  }
+
+  const renderView = () => {    switch (view) {
       case 'today': return <TodayView />;
       case 'calendar': return <CalendarView />;
       case 'all': return <AllTasksView />;

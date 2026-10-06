@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../store';
-import { cn } from '../utils';
+import { cn, TRANSPARENCY_STEPS } from '../utils';
 import { Sun, Moon, Monitor, Download, Upload, Keyboard, Info, Bell, Palette, Check, Trash2, Save, X, Loader2, RefreshCw, Wifi, Copy } from 'lucide-react';
 import {
   syncNow as lanSyncNow,
@@ -33,6 +33,8 @@ const SHORTCUTS = [
 
 type ThemeValue = 'dark' | 'light' | 'system';
 
+const FA_PCT: Record<number, string> = { 0: '۰٪', 20: '۲۰٪', 40: '۴۰٪', 60: '۶۰٪', 80: '۸۰٪' };
+
 function applyThemeToDom(t: ThemeValue) {
   const apply = (v: 'dark' | 'light') => document.documentElement.classList.toggle('dark', v === 'dark');
   if (t === 'system') {
@@ -53,6 +55,8 @@ export function SettingsView() {
   const [draftTheme, setDraftTheme] = useState<ThemeValue>(theme as ThemeValue);
   const [draftAccent, setDraftAccent] = useState(accentColor);
   const [draftCalendar, setDraftCalendar] = useState(settings.calendarType || 'gregorian');
+  const [draftCardT, setDraftCardT] = useState(settings.cardTransparency || '0');
+  const [draftWidgetT, setDraftWidgetT] = useState(settings.widgetTransparency || '60');
   const [draftShowOnStartup, setDraftShowOnStartup] = useState(settings.showOnStartup !== 'false');
   const [draftMorning, setDraftMorning] = useState(settings.morningNotification !== 'false');
   const [draftAutoLaunch, setDraftAutoLaunch] = useState(false);
@@ -121,6 +125,8 @@ export function SettingsView() {
     setDraftTheme(theme as ThemeValue);
     setDraftAccent(accentColor);
     setDraftCalendar(settings.calendarType || 'gregorian');
+    setDraftCardT(settings.cardTransparency || '0');
+    setDraftWidgetT(settings.widgetTransparency || '60');
     setDraftShowOnStartup(settings.showOnStartup !== 'false');
     setDraftMorning(settings.morningNotification !== 'false');
   }, [settings, theme, accentColor]);
@@ -138,11 +144,13 @@ export function SettingsView() {
       draftTheme !== theme ||
       draftAccent !== accentColor ||
       draftCalendar !== (settings.calendarType || 'gregorian') ||
+      draftCardT !== (settings.cardTransparency || '0') ||
+      draftWidgetT !== (settings.widgetTransparency || '60') ||
       draftShowOnStartup !== (settings.showOnStartup !== 'false') ||
       draftMorning !== (settings.morningNotification !== 'false') ||
       draftAutoLaunch !== persistedAutoLaunch
     );
-  }, [dirty, draftTheme, theme, draftAccent, accentColor, draftCalendar, settings, draftShowOnStartup, draftMorning, draftAutoLaunch, persistedAutoLaunch]);
+  }, [dirty, draftTheme, theme, draftAccent, accentColor, draftCalendar, settings, draftCardT, draftWidgetT, draftShowOnStartup, draftMorning, draftAutoLaunch, persistedAutoLaunch]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -152,6 +160,8 @@ export function SettingsView() {
       if (draftAccent !== accentColor) setAccentColor(draftAccent);
       const patch: Record<string, string> = {};
       if (draftCalendar !== (settings.calendarType || 'gregorian')) patch.calendarType = draftCalendar;
+      if (draftCardT !== (settings.cardTransparency || '0')) patch.cardTransparency = draftCardT;
+      if (draftWidgetT !== (settings.widgetTransparency || '60')) patch.widgetTransparency = draftWidgetT;
       if (String(draftShowOnStartup) !== String(settings.showOnStartup !== 'false')) patch.showOnStartup = String(draftShowOnStartup);
       if (String(draftMorning) !== String(settings.morningNotification !== 'false')) patch.morningNotification = String(draftMorning);
       if (Object.keys(patch).length > 0) await updateSettings(patch);
@@ -170,6 +180,8 @@ export function SettingsView() {
     setDraftTheme(theme as ThemeValue);
     setDraftAccent(accentColor);
     setDraftCalendar(settings.calendarType || 'gregorian');
+    setDraftCardT(settings.cardTransparency || '0');
+    setDraftWidgetT(settings.widgetTransparency || '60');
     setDraftShowOnStartup(settings.showOnStartup !== 'false');
     setDraftMorning(settings.morningNotification !== 'false');
     setDraftAutoLaunch(persistedAutoLaunch);
@@ -284,13 +296,40 @@ export function SettingsView() {
               </div>
 
               <h4 className="text-sm font-medium mb-2">رنگ اصلی</h4>
-              <div className="flex gap-2">
+              <div className="flex gap-2 mb-4">
                 {ACCENT_COLORS.map(c => (
                   <button key={c.value} onClick={() => { setDraftAccent(c.value); markDirty(); }}
                     className={cn('w-8 h-8 rounded-full transition-all', draftAccent === c.value && 'ring-2 ring-offset-2 ring-offset-background scale-110')}
                     style={{ backgroundColor: c.color }} title={c.name} />
                 ))}
               </div>
+
+              <h4 className="text-sm font-medium mb-1">شفافیت کارت‌ها</h4>
+              <p className="text-xs text-muted-foreground mb-2">۰٪ یعنی کاملاً توپر، ۸۰٪ یعنی خیلی شیشه‌ای</p>
+              <p className="text-xs text-muted-foreground mb-2">داخل برنامه</p>
+              <div className="flex gap-2 mb-3">
+                {TRANSPARENCY_STEPS.map(v => (
+                  <button key={v} onClick={() => { setDraftCardT(String(v)); markDirty(); }}
+                    className={cn('flex-1 py-2 rounded-lg border text-sm transition-all',
+                      draftCardT === String(v) ? 'border-primary bg-primary/10 text-foreground' : 'border-border bg-muted text-muted-foreground')}>
+                    {FA_PCT[v]}
+                  </button>
+                ))}
+              </div>
+              {!isNative && (
+                <>
+                  <p className="text-xs text-muted-foreground mb-2">ویجت دسکتاپ</p>
+                  <div className="flex gap-2">
+                    {TRANSPARENCY_STEPS.map(v => (
+                      <button key={v} onClick={() => { setDraftWidgetT(String(v)); markDirty(); }}
+                        className={cn('flex-1 py-2 rounded-lg border text-sm transition-all',
+                          draftWidgetT === String(v) ? 'border-primary bg-primary/10 text-foreground' : 'border-border bg-muted text-muted-foreground')}>
+                        {FA_PCT[v]}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="p-4 rounded-xl border border-border/50 bg-card">

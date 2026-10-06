@@ -57,6 +57,10 @@ declare global {
       getVersion: () => Promise<string>;
       setAutoLaunch: (enabled: boolean) => Promise<any>;
       getAutoLaunch: () => Promise<boolean>;
+      widgetOpen: (taskId: string) => Promise<any>;
+      widgetClose: (taskId: string) => Promise<any>;
+      widgetSetOnTop: (taskId: string, onTop: boolean) => Promise<any>;
+      showTaskInMain: (taskId: string) => Promise<any>;
       copyLinkedTask: (taskId: string, newDate: string) => Promise<Task>;
       toggleSubtask: (taskId: string, subtaskId: string) => Promise<Task>;
       addSubtask: (taskId: string, title: string) => Promise<Task>;

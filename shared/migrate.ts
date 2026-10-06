@@ -17,6 +17,7 @@ export function migrateDatabase(database: DatabaseSchema): void {
     if (!t.subtasks) t.subtasks = [];
     if (t.linked_id === undefined) t.linked_id = null;
     if (t.color === undefined) t.color = null;
+    if ((t as any).pinned === undefined) (t as any).pinned = 0;
     if (!t.updated_at) t.updated_at = t.created_at || nowIso();
     if (!t.created_at) t.created_at = t.updated_at;
   });
@@ -65,6 +66,8 @@ export function seedDefaultData(database: DatabaseSchema): void {
       language: 'fa',
       onboardingComplete: 'false',
       calendarType: 'gregorian',
+      cardTransparency: '0',
+      widgetTransparency: '60',
     };
   }
   if (!database.settings.calendarType) database.settings.calendarType = 'gregorian';

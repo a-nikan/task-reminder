@@ -91,4 +91,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Startup
   setAutoLaunch: (enabled: boolean) => ipcRenderer.invoke('app:setAutoLaunch', enabled),
   getAutoLaunch: () => ipcRenderer.invoke('app:getAutoLaunch'),
+
+  // Desktop widgets (Windows only)
+  widgetOpen: (taskId: string) => ipcRenderer.invoke('widget:open', taskId),
+  widgetClose: (taskId: string) => ipcRenderer.invoke('widget:close', taskId),
+  widgetSetOnTop: (taskId: string, onTop: boolean) => ipcRenderer.invoke('widget:setOnTop', taskId, onTop),
+  showTaskInMain: (taskId: string) => ipcRenderer.invoke('widget:showTask', taskId),
 });

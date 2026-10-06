@@ -306,3 +306,50 @@ export const SNOOZE_OPTIONS = [
   { value: 60, label: '۱ ساعت' },
   { value: 1440, label: 'فردا' },
 ];
+
+export const TRANSPARENCY_STEPS = [0, 20, 40, 60, 80];
+export const CARD_TRANSPARENCY_KEY = 'cardTransparency';
+export const WIDGET_TRANSPARENCY_KEY = 'widgetTransparency';
+
+export function getTransparency(settings: Record<string, string> | undefined, key: string, fallback: number): number {
+  const raw = settings?.[key];
+  const v = raw === undefined || raw === '' ? NaN : parseInt(raw, 10);
+  if (isNaN(v)) return fallback;
+  return TRANSPARENCY_STEPS.includes(v) ? v : fallback;
+}
+
+// Card gradient stops at 0% extra transparency (the classic look).
+const CARD_GRADIENT_BASE = [0xe6, 0xd9, 0xcc];
+
+export function cardGradient(accent: string, transparencyPct: number): string {
+  const t = Math.min(80, Math.max(0, transparencyPct)) / 100;
+  const stops = CARD_GRADIENT_BASE.map(b => {
+    const a = Math.max(0x26, Math.round(b - t * 255));
+    return a.toString(16).padStart(2, '0');
+  });
+  return `linear-gradient(165deg, ${accent}${stops[0]} 0%, ${accent}${stops[1]} 55%, ${accent}${stops[2]} 100%)`;
+}
+
+const FALLBACK_PALETTE = ['#8b5cf6', '#3b82f6', '#10b981', '#ec4899', '#f97316'];
+
+export function fallbackAccent(id: string): string {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) | 0;
+  return FALLBACK_PALETTE[Math.abs(hash) % FALLBACK_PALETTE.length];
+}
+
+export function colorBrightness(hex: string): number {
+  const m = hex.replace('#', '');
+  const r = parseInt(m.slice(0, 2), 16);
+  const g = parseInt(m.slice(2, 4), 16);
+  const b = parseInt(m.slice(4, 6), 16);
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+}
+
+export function pickOnColor(accent: string): string {
+  const isDark =
+    typeof document !== 'undefined' &&
+    document.documentElement.classList.contains('dark');
+  const eff = colorBrightness(accent) * 0.85 + (isDark ? 0.04 : 0.96) * 0.15;
+  return eff > 0.42 ? '#16161d' : '#ffffff';
+}
