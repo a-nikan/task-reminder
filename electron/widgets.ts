@@ -103,7 +103,7 @@ export function openTaskWidget(taskId: string): { success: boolean; reason?: str
   if (!app.isPackaged) {
     win.loadURL(`http://localhost:5173/#/widget/${taskId}`);
   } else {
-    win.loadFile(path.join(__dirname, '../dist/index.html'), { hash: `widget/${taskId}` });
+    win.loadFile(path.join(__dirname, '../dist/index.html'), { hash: `/widget/${taskId}` });
   }
 
   widgetWindows.set(taskId, win);

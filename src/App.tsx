@@ -85,7 +85,7 @@ export default function App() {
     });
   }, []);
 
-  const widgetMatch = window.location.hash.match(/^#\/widget\/(.+)$/);
+  const widgetMatch = window.location.hash.match(/^#\/?widget\/(.+)$/);
   if (widgetMatch) {
     return (
       <div className="h-screen w-screen overflow-hidden bg-transparent">

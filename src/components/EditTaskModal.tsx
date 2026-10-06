@@ -31,6 +31,7 @@ export function EditTaskModal() {
         subtasks: (editingTask.subtasks || []).map(s => ({ ...s })),
         recurrence: editingTask.recurrence || '',
         reminderOffset: editingTask.reminder_offset || 0,
+        widget: !!(editingTask as any).pinned,
       });
     }).catch(() => {
       setHadActiveReminder(false);
@@ -46,6 +47,7 @@ export function EditTaskModal() {
         subtasks: (editingTask.subtasks || []).map(s => ({ ...s })),
         recurrence: editingTask.recurrence || '',
         reminderOffset: editingTask.reminder_offset || 0,
+        widget: !!(editingTask as any).pinned,
       });
     });
   }, [editingTask]);
@@ -70,7 +72,11 @@ export function EditTaskModal() {
       subtasks: data.subtasks,
       recurrence: data.recurrence || null,
       reminder_offset: data.reminderOffset,
+      pinned: data.widget ? 1 : 0,
     });
+    const wasPinned = !!(editingTask as any).pinned;
+    if (data.widget && !wasPinned) await window.electronAPI.widgetOpen(editingTask.id);
+    else if (!data.widget && wasPinned) await window.electronAPI.widgetClose(editingTask.id);
     await scheduleReminderFromForm(
       editingTask.id,
       data,

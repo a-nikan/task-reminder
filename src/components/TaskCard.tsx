@@ -228,6 +228,8 @@ export function TaskCard({
     : dateLabel;
 
   return (
+    <div className={cn('flex flex-col transition-all duration-200',
+      !expanded && !selectionMode && 'hover:-translate-y-0.5 hover:rotate-[-0.4deg]')}>
     <div
       className={cn(
         'relative rounded-2xl border-2 bg-card transition-all duration-200 group flex flex-col min-h-[150px]',
@@ -237,7 +239,7 @@ export function TaskCard({
         expanded && !selectionMode && 'ring-1 ring-primary/30',
         selected && 'ring-2 ring-primary',
         !expanded && !selectionMode &&
-          'hover:-translate-y-0.5 hover:rotate-[-0.4deg] hover:shadow-[0_10px_24px_-8px_rgba(0,0,0,0.28)]'
+          'hover:shadow-[0_10px_24px_-8px_rgba(0,0,0,0.28)]'
       )}
       style={{
         borderColor: customBorder ? undefined : accent,
@@ -510,10 +512,11 @@ export function TaskCard({
         </div>
       )}
 
+    </div>
       {task.subtasks && task.subtasks.length > 0 && (
         <div
-          className="mt-auto flex gap-[3px] h-3.5 overflow-hidden"
-          style={{ borderTop: `1px dashed ${onColor}33` }}
+          className="flex gap-[3px] h-3.5 px-[3px] -mt-[2px] mx-[2px] border-x-2 border-b-2 overflow-hidden"
+          style={{ borderColor: accent, backgroundColor: `${accent}1f` }}
           aria-hidden="true"
         >
           {task.subtasks.map((st: Subtask) => (

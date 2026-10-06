@@ -18,6 +18,7 @@ export function NewTaskModal() {
     subtasks: [],
     recurrence: '',
     reminderOffset: 0,
+    widget: false,
   };
 
   const handleSubmit = async (data: TaskFormData) => {
@@ -33,10 +34,12 @@ export function NewTaskModal() {
       subtasks: data.subtasks,
       recurrence: data.recurrence || null,
       reminder_offset: data.reminderOffset,
+      pinned: data.widget ? 1 : 0,
       status: 'todo' as const,
     });
     if (created?.id) {
       await scheduleReminderFromForm(created.id, data, false);
+      if (data.widget) await window.electronAPI.widgetOpen(created.id);
     }
     showToast('تسک ایجاد شد');
     refreshCurrentView();

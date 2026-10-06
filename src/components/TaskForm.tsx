@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useStore } from '../store';
 import { cn, getToday, getTomorrow, RECURRENCE_OPTIONS, REMINDER_OPTIONS, parseNaturalLanguage } from '../utils';
 import type { Task, TaskPriority, Subtask } from '../types';
-import { Calendar, Clock, Flag, Tag, Folder, Repeat, Sparkles, Plus, Check, X, Palette } from 'lucide-react';
+import { Calendar, Clock, Flag, Tag, Folder, Repeat, Sparkles, Plus, Check, X, Palette, Pin } from 'lucide-react';
 import { DateInput } from './DateInput';
 import { ColorSwatches } from './ColorSwatches';
 import { v4 as uuidv4 } from 'uuid';
@@ -19,6 +19,7 @@ export interface TaskFormData {
   subtasks: Subtask[];
   recurrence: string;
   reminderOffset: number;
+  widget: boolean;
 }
 
 interface TaskFormProps {
@@ -45,6 +46,8 @@ export function TaskForm({ initial, submitLabel, onSubmit, onCancel }: TaskFormP
   const [subtasks, setSubtasks] = useState<Subtask[]>(initial.subtasks);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
   const [busy, setBusy] = useState(false);
+  const [widget, setWidget] = useState(initial.widget);
+  const isNativeForm = typeof (window as any).Capacitor !== 'undefined' && !!(window as any).Capacitor.isNativePlatform?.();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,6 +66,7 @@ export function TaskForm({ initial, submitLabel, onSubmit, onCancel }: TaskFormP
         subtasks,
         recurrence,
         reminderOffset,
+        widget,
       });
     } finally {
       setBusy(false);
@@ -185,6 +189,17 @@ export function TaskForm({ initial, submitLabel, onSubmit, onCancel }: TaskFormP
         <label className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1"><Palette className="w-3 h-3" />رنگ کارت</label>
         <ColorSwatches value={color} onPick={setColor} />
       </div>
+
+      {!isNativeForm && (
+        <div className="mb-4">
+          <button type="button" onClick={() => setWidget(!widget)}
+            className={cn('w-full flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-medium transition-all',
+              widget ? 'border-primary bg-primary/10 text-foreground' : 'border-border bg-muted text-muted-foreground')}>
+            <Pin className="w-3.5 h-3.5" />
+            {widget ? 'ویجت دسکتاپ فعال است — با ثبت باز می‌شود' : 'باز شدن به‌صورت ویجت دسکتاپ'}
+          </button>
+        </div>
+      )}
 
       <div className="flex items-center gap-2 mb-4">
         <button type="button" onClick={() => setShowAdvanced(!showAdvanced)} className="text-xs text-primary hover:underline">
