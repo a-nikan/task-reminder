@@ -169,6 +169,8 @@ export function SettingsView() {
         await window.electronAPI.setAutoLaunch(draftAutoLaunch);
         setPersistedAutoLaunch(draftAutoLaunch);
       }
+      // Let open desktop widgets pick up the new settings immediately
+      await window.electronAPI.notifyWidgetChanged('settings').catch(() => {});
       setDirty(false);
       showToast('تنظیمات ذخیره شد');
     } finally {

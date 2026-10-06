@@ -175,6 +175,15 @@ export function setupWidgetIpc(): void {
       if (mainWindowRef && !mainWindowRef.isDestroyed() && mainWindowRef.webContents.id !== senderId) {
         mainWindowRef.webContents.send('tasks:changed', taskId);
       }
+      widgetWindows.forEach(win => {
+        try {
+          if (!win.isDestroyed() && win.webContents.id !== senderId) {
+            win.webContents.send('tasks:changed', taskId);
+          }
+        } catch {
+          // ignore
+        }
+      });
       return { success: true };
     } catch {
       return { success: false };

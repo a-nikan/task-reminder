@@ -515,8 +515,8 @@ export function TaskCard({
     </div>
       {hasStrip && (
         <div
-          className="flex gap-[3px] h-3.5 px-[3px] -mt-[2px] mx-[2px] border-x-2 border-b-2 overflow-hidden"
-          style={{ borderColor: accent, backgroundColor: `${accent}1f` }}
+          className="flex gap-[3px] h-3.5 overflow-hidden"
+          style={{ backgroundColor: `${accent}33` }}
           aria-hidden="true"
         >
           {task.subtasks.map((st: Subtask) => (
@@ -527,9 +527,10 @@ export function TaskCard({
               />
               <div
                 className={cn(
-                  'absolute inset-0 bg-white/40 transition-all duration-300 ease-out shadow-[inset_0_-1px_2px_rgba(0,0,0,0.12)]',
+                  'absolute inset-0 transition-all duration-300 ease-out shadow-[inset_0_-1px_2px_rgba(0,0,0,0.12)]',
                   st.completed && 'opacity-0 translate-y-4 rotate-6 scale-75'
                 )}
+                style={{ backgroundColor: `${onColor}40` }}
               />
             </div>
           ))}

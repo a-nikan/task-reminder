@@ -32,6 +32,7 @@ export function TaskWidget({ taskId }: { taskId: string }) {
 
   const load = async () => {
     try {
+      await useStore.getState().loadSettings().catch(() => {});
       const t = await window.electronAPI.getTaskById(taskId);
       if (!t || (t as any).archived) {
         await window.electronAPI.widgetClose(taskId);
@@ -51,6 +52,7 @@ export function TaskWidget({ taskId }: { taskId: string }) {
     load();
     const onFocus = () => load();
     window.addEventListener('focus', onFocus);
+    window.electronAPI.onTasksChanged(() => load());
     const timer = setInterval(load, 15000);
     return () => {
       window.removeEventListener('focus', onFocus);
