@@ -102,6 +102,15 @@ export default function App() {
     });
   }, []);
 
+  useEffect(() => {
+    if (window.location.hash.match(/^#\/?widget\//)) return;
+    const root = document.getElementById('root');
+    if (root) {
+      const s = parseInt(settings.uiScale || '100', 10);
+      (root.style as any).zoom = String((isNaN(s) ? 100 : s) / 100);
+    }
+  }, [settings.uiScale]);
+
   const widgetMatch = window.location.hash.match(/^#\/?widget\/(.+)$/);
   if (widgetMatch) {
     return (

@@ -44,6 +44,7 @@ export function createTask(db: DatabaseSchema, input: any): Task {
     category_id: input.category_id || null,
     color: input.color || null,
     pinned: input.pinned ? 1 : 0,
+    text_dir: input.text_dir || null,
     tags: input.tags || [],
     subtasks: input.subtasks || [],
     linked_id: input.linked_id || null,
@@ -67,7 +68,7 @@ export function updateTask(db: DatabaseSchema, id: string, updates: any): Task |
   if (!task) return null;
 
   const now = nowIso();
-  const allowedFields = ['title', 'description', 'status', 'priority', 'date', 'time', 'reminder', 'reminder_offset', 'category_id', 'color', 'pinned', 'tags', 'subtasks', 'linked_id', 'recurrence', 'recurrence_parent', 'order_index', 'archived', 'favorite'];
+  const allowedFields = ['title', 'description', 'status', 'priority', 'date', 'time', 'reminder', 'reminder_offset', 'category_id', 'color', 'pinned', 'text_dir', 'tags', 'subtasks', 'linked_id', 'recurrence', 'recurrence_parent', 'order_index', 'archived', 'favorite'];
 
   for (const [key, value] of Object.entries(updates)) {
     if (allowedFields.includes(key)) {

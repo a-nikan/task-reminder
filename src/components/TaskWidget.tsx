@@ -11,7 +11,7 @@ import {
   WIDGET_TRANSPARENCY_KEY,
 } from '../utils';
 import type { Task, TaskStatus, Subtask } from '../types';
-import { Check, Clock, X, Pin, PinOff } from 'lucide-react';
+import { Check, Clock, X, Pin, PinOff, AlignLeft, AlignRight } from 'lucide-react';
 
 function readWidgetOnTop(settings: Record<string, string> | undefined, taskId: string): boolean {
   try {
@@ -119,8 +119,17 @@ export function TaskWidget({ taskId }: { taskId: string }) {
     await window.electronAPI.widgetClose(task.id);
   };
 
+  const isLtrWidget = (task as any).text_dir === 'ltr';
+
+  const handleToggleDir = async () => {
+    await window.electronAPI.updateTask(task.id, { text_dir: isLtrWidget ? null : 'ltr' });
+    await window.electronAPI.notifyWidgetChanged(task.id);
+    await load();
+    refreshCurrentView();
+  };
+
   return (
-    <div className="h-screen w-screen bg-transparent p-1.5 overflow-hidden">
+    <div className="h-screen w-screen bg-transparent p-1.5 overflow-hidden" dir={isLtrWidget ? 'ltr' : undefined}>
       <div
         className="h-full flex flex-col rounded-2xl overflow-hidden"
         style={{
@@ -146,6 +155,14 @@ export function TaskWidget({ taskId }: { taskId: string }) {
           <span className={cn('text-sm font-medium leading-snug line-clamp-2 break-words flex-1', task.status === 'done' && 'line-through opacity-60')}>
             {task.title}
           </span>
+          <button
+            onClick={handleToggleDir}
+            title={isLtrWidget ? 'راست‌چین' : 'چپ‌چین'}
+            className="no-drag p-1 rounded-md shrink-0 transition-colors hover:bg-black/10"
+            style={{ color: onColor }}
+          >
+            {isLtrWidget ? <AlignLeft className="w-3.5 h-3.5" /> : <AlignRight className="w-3.5 h-3.5 opacity-70" />}
+          </button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-2.5 pb-1.5 min-h-0">

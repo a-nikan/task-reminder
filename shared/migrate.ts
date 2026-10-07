@@ -18,6 +18,7 @@ export function migrateDatabase(database: DatabaseSchema): void {
     if (t.linked_id === undefined) t.linked_id = null;
     if (t.color === undefined) t.color = null;
     if ((t as any).pinned === undefined) (t as any).pinned = 0;
+    if ((t as any).text_dir === undefined) (t as any).text_dir = null;
     if (!t.updated_at) t.updated_at = t.created_at || nowIso();
     if (!t.created_at) t.created_at = t.updated_at;
   });
@@ -68,8 +69,10 @@ export function seedDefaultData(database: DatabaseSchema): void {
       calendarType: 'gregorian',
       cardTransparency: '0',
       widgetTransparency: '0',
+      uiScale: '100',
     };
   }
   if (!database.settings.calendarType) database.settings.calendarType = 'gregorian';
   if (!database.settings.widgetTransparency) database.settings.widgetTransparency = '0';
+  if (!database.settings.uiScale) database.settings.uiScale = '100';
 }

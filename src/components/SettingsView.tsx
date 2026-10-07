@@ -34,6 +34,8 @@ const SHORTCUTS = [
 type ThemeValue = 'dark' | 'light' | 'system';
 
 const FA_PCT: Record<number, string> = { 0: '۰٪', 20: '۲۰٪', 40: '۴۰٪', 60: '۶۰٪', 80: '۸۰٪' };
+const UI_SCALES = [90, 100, 110, 125];
+const FA_SCALE: Record<number, string> = { 90: '۹۰٪', 100: '۱۰۰٪', 110: '۱۱۰٪', 125: '۱۲۵٪' };
 
 function applyThemeToDom(t: ThemeValue) {
   const apply = (v: 'dark' | 'light') => document.documentElement.classList.toggle('dark', v === 'dark');
@@ -57,6 +59,7 @@ export function SettingsView() {
   const [draftCalendar, setDraftCalendar] = useState(settings.calendarType || 'gregorian');
   const [draftCardT, setDraftCardT] = useState(settings.cardTransparency || '0');
   const [draftWidgetT, setDraftWidgetT] = useState(settings.widgetTransparency || '0');
+  const [draftScale, setDraftScale] = useState(settings.uiScale || '100');
   const [draftShowOnStartup, setDraftShowOnStartup] = useState(settings.showOnStartup !== 'false');
   const [draftMorning, setDraftMorning] = useState(settings.morningNotification !== 'false');
   const [draftAutoLaunch, setDraftAutoLaunch] = useState(false);
@@ -127,6 +130,7 @@ export function SettingsView() {
     setDraftCalendar(settings.calendarType || 'gregorian');
     setDraftCardT(settings.cardTransparency || '0');
     setDraftWidgetT(settings.widgetTransparency || '0');
+    setDraftScale(settings.uiScale || '100');
     setDraftShowOnStartup(settings.showOnStartup !== 'false');
     setDraftMorning(settings.morningNotification !== 'false');
   }, [settings, theme, accentColor]);
@@ -146,11 +150,12 @@ export function SettingsView() {
       draftCalendar !== (settings.calendarType || 'gregorian') ||
       draftCardT !== (settings.cardTransparency || '0') ||
       draftWidgetT !== (settings.widgetTransparency || '0') ||
+      draftScale !== (settings.uiScale || '100') ||
       draftShowOnStartup !== (settings.showOnStartup !== 'false') ||
       draftMorning !== (settings.morningNotification !== 'false') ||
       draftAutoLaunch !== persistedAutoLaunch
     );
-  }, [dirty, draftTheme, theme, draftAccent, accentColor, draftCalendar, settings, draftCardT, draftWidgetT, draftShowOnStartup, draftMorning, draftAutoLaunch, persistedAutoLaunch]);
+  }, [dirty, draftTheme, theme, draftAccent, accentColor, draftCalendar, settings, draftCardT, draftWidgetT, draftScale, draftShowOnStartup, draftMorning, draftAutoLaunch, persistedAutoLaunch]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -162,6 +167,7 @@ export function SettingsView() {
       if (draftCalendar !== (settings.calendarType || 'gregorian')) patch.calendarType = draftCalendar;
       if (draftCardT !== (settings.cardTransparency || '0')) patch.cardTransparency = draftCardT;
       if (draftWidgetT !== (settings.widgetTransparency || '0')) patch.widgetTransparency = draftWidgetT;
+      if (draftScale !== (settings.uiScale || '100')) patch.uiScale = draftScale;
       if (String(draftShowOnStartup) !== String(settings.showOnStartup !== 'false')) patch.showOnStartup = String(draftShowOnStartup);
       if (String(draftMorning) !== String(settings.morningNotification !== 'false')) patch.morningNotification = String(draftMorning);
       if (Object.keys(patch).length > 0) await updateSettings(patch);
@@ -184,6 +190,7 @@ export function SettingsView() {
     setDraftCalendar(settings.calendarType || 'gregorian');
     setDraftCardT(settings.cardTransparency || '0');
     setDraftWidgetT(settings.widgetTransparency || '0');
+    setDraftScale(settings.uiScale || '100');
     setDraftShowOnStartup(settings.showOnStartup !== 'false');
     setDraftMorning(settings.morningNotification !== 'false');
     setDraftAutoLaunch(persistedAutoLaunch);
@@ -332,6 +339,17 @@ export function SettingsView() {
                   </div>
                 </>
               )}
+
+              <h4 className="text-sm font-medium mb-2 mt-4">مقیاس برنامه</h4>
+              <div className="flex gap-2">
+                {UI_SCALES.map(v => (
+                  <button key={v} onClick={() => { setDraftScale(String(v)); markDirty(); }}
+                    className={cn('flex-1 py-2 rounded-lg border text-sm transition-all',
+                      draftScale === String(v) ? 'border-primary bg-primary/10 text-foreground' : 'border-border bg-muted text-muted-foreground')}>
+                    {FA_SCALE[v]}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="p-4 rounded-xl border border-border/50 bg-card">

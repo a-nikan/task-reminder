@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { useStore } from '../store';
 import { cn, getToday, getTomorrow, formatTaskDateLocalized, formatReminderLocalized, fallbackAccent, pickOnColor, cardGradient, getTransparency, CARD_TRANSPARENCY_KEY } from '../utils';
 import type { Task, TaskStatus, Subtask } from '../types';
-import { Check, Clock, Star, ChevronDown, ChevronUp, Edit2, Copy, CheckSquare, Plus, Trash2, X, Calendar, Bell, BellOff, Pin, PinOff, GripVertical } from 'lucide-react';
+import { Check, Clock, Star, ChevronDown, ChevronUp, Edit2, Copy, CheckSquare, Plus, Trash2, X, Calendar, Bell, BellOff, Pin, PinOff, GripVertical, AlignLeft, AlignRight } from 'lucide-react';
 import { DateInput } from './DateInput';
 import { ColorSwatches } from './ColorSwatches';
 import { followReminderAfterMove, armReminderIfFuture } from './TaskForm';
@@ -157,6 +157,14 @@ export function TaskCard({
     onReminderChanged?.();
   };
 
+  const isLtrCard = (task as any).text_dir === 'ltr';
+
+  const handleToggleDir = async () => {
+    await window.electronAPI.updateTask(task.id, { text_dir: isLtrCard ? null : 'ltr' });
+    refreshCurrentView();
+    onReminderChanged?.();
+  };
+
   // Swap drag & drop (exchange places with another card in the same group)
   const cardRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -289,6 +297,7 @@ export function TaskCard({
     <div
       ref={cardRef}
       data-swap-id={swapGroupId ? task.id : undefined}
+      dir={isLtrCard ? 'ltr' : undefined}
       style={dragging ? { transform: `translate(${dragOffset.x}px, ${dragOffset.y}px)` } : undefined}
       className={cn('flex flex-col transition-all duration-200',
       !expanded && !selectionMode && 'hover:-translate-y-0.5 hover:rotate-[-0.4deg]',
@@ -387,6 +396,13 @@ export function TaskCard({
         </div>
 
         <div className="flex items-start gap-1 shrink-0">
+          {!selectionMode && (
+            <button onClick={(e) => { e.stopPropagation(); handleToggleDir(); }} title={isLtrCard ? 'راست‌چین' : 'چپ‌چین'}
+              className={cn('transition-all p-1 rounded hover:bg-muted',
+                isLtrCard ? 'opacity-100 text-primary' : 'opacity-60 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100')}>
+              {isLtrCard ? <AlignLeft className="w-3.5 h-3.5" /> : <AlignRight className="w-3 h-3 opacity-70" />}
+            </button>
+          )}
           {onSwapCards && swapGroupId && !selectionMode && (
             <button
               onPointerDown={handleSwapPointerDown}

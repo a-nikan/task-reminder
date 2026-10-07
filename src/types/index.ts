@@ -11,6 +11,7 @@ export interface Settings {
   calendarType: string;
   cardTransparency: string;
   widgetTransparency: string;
+  uiScale: string;
 }
 
 export type ViewType = 'today' | 'calendar' | 'all' | 'anytime' | 'overdue' | 'important' | 'categories' | 'statistics' | 'settings' | 'category-detail';

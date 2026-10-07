@@ -20,6 +20,7 @@ export interface Task {
   category_id: string | null;
   color: string | null;
   pinned: number;
+  text_dir: string | null;
   tags: string[];
   subtasks: Subtask[];
   linked_id: string | null;

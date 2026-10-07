@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useStore } from '../store';
 import { cn, getStatusLabel, getPriorityLabel, getPriorityColor, getStatusBgColor, RECURRENCE_OPTIONS, REMINDER_OPTIONS, getToday, getTomorrow, formatTaskDateLocalized, formatReminderLocalized } from '../utils';
 import type { Task, TaskStatus, Subtask } from '../types';
-import { X, Check, Clock, Folder, Bell, Trash2, Archive, Star, Edit2, Link, Copy, Plus, CheckSquare, Tag, Repeat, Pin, PinOff } from 'lucide-react';
+import { X, Check, Clock, Folder, Bell, Trash2, Archive, Star, Edit2, Link, Copy, Plus, CheckSquare, Tag, Repeat, Pin, PinOff, AlignLeft, AlignRight } from 'lucide-react';
 import { DateInput } from './DateInput';
 import { ColorSwatches } from './ColorSwatches';
 import { followReminderAfterMove, armReminderIfFuture } from './TaskForm';
@@ -228,6 +228,13 @@ export function TaskDetailPanel() {
     await refreshTask();
   };
 
+  const isLtrPanel = (task as any).text_dir === 'ltr';
+
+  const handleToggleDir = async () => {
+    await window.electronAPI.updateTask(task.id, { text_dir: isLtrPanel ? null : 'ltr' });
+    await refreshTask();
+  };
+
   const subtaskProgress = subtasks.length > 0
     ? Math.round((subtasks.filter(s => s.completed).length / subtasks.length) * 100)
     : 0;
@@ -243,6 +250,9 @@ export function TaskDetailPanel() {
                 {(task as any).pinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
               </button>
             )}
+            <button onClick={handleToggleDir} title={isLtrPanel ? 'راست‌چین' : 'چپ‌چین'} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground transition-colors">
+              {isLtrPanel ? <AlignLeft className="w-4 h-4 text-primary" /> : <AlignRight className="w-4 h-4" />}
+            </button>
             <button onClick={openFullEdit} title="ویرایش کامل" className="p-1.5 rounded-md hover:bg-muted text-muted-foreground transition-colors">
               <Edit2 className="w-4 h-4" />
             </button>
