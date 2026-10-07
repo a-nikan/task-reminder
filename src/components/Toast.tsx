@@ -30,9 +30,9 @@ export function Toast() {
   };
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] animate-slide-up">
+    <div className="fixed inset-x-0 bottom-6 z-[100] flex justify-center pointer-events-none animate-slide-up">
       <div className={cn(
-        'flex items-center gap-3 px-4 py-3 rounded-xl border shadow-xl backdrop-blur-sm',
+        'pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl border shadow-xl backdrop-blur-sm',
         toast.type === 'success' && 'bg-status-done/10 border-status-done/30 text-status-done',
         toast.type === 'error' && 'bg-destructive/10 border-destructive/30 text-destructive',
         toast.type === 'info' && 'bg-primary/10 border-primary/30 text-primary',

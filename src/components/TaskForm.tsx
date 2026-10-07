@@ -100,7 +100,7 @@ export function TaskForm({ initial, submitLabel, onSubmit, onCancel }: TaskFormP
   };
 
   return (
-    <form onSubmit={handleSubmit} className="p-4 max-h-[70vh] overflow-y-auto">
+    <form onSubmit={handleSubmit} className="p-4 max-h-[calc(70vh/var(--zoom,1))] overflow-y-auto">
       <div className="mb-4">
         <div className="relative">
           <input

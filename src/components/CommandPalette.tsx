@@ -81,7 +81,7 @@ export function CommandPalette() {
   }, {} as Record<string, typeof allItems>);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh]">
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[calc(20vh/var(--zoom,1))]">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowCommandPalette(false)} />
       <div className="relative w-full max-w-md mx-4 bg-card rounded-2xl border border-border shadow-2xl overflow-hidden animate-slide-up">
         <div className="flex items-center gap-3 px-4 py-3 border-b border-border">

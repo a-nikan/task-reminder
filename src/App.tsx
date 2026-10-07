@@ -104,10 +104,16 @@ export default function App() {
 
   useEffect(() => {
     if (window.location.hash.match(/^#\/?widget\//)) return;
+    const s = parseInt(settings.uiScale || '100', 10);
+    const z = isNaN(s) ? 1 : Math.min(2, Math.max(0.5, s / 100));
+    document.documentElement.style.setProperty('--zoom', String(z));
     const root = document.getElementById('root');
     if (root) {
-      const s = parseInt(settings.uiScale || '100', 10);
-      (root.style as any).zoom = String((isNaN(s) ? 100 : s) / 100);
+      const st = root.style as any;
+      // zoom scales layout too: shrink the root box so painted output fills exactly 100vw x 100vh
+      st.zoom = String(z);
+      st.width = `${100 / z}vw`;
+      st.height = `${100 / z}vh`;
     }
   }, [settings.uiScale]);
 
@@ -137,7 +143,7 @@ export default function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden">
+    <div className="flex flex-col h-full w-full overflow-hidden">
       {!onboardingComplete && settings.onboardingComplete !== 'true' && <Onboarding />}
       <TitleBar />
       <MobileHeader />
