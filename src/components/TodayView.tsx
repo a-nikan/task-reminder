@@ -5,6 +5,7 @@ import type { Task, TaskStatus } from '../types';
 import { TaskCard } from './TaskCard';
 import { BulkToolbar } from './BulkToolbar';
 import { useTaskSelection, useActiveReminders } from '../hooks/useTaskSelection';
+import { useCardSwap, swapCardOrder } from '../hooks/useCardSwap';
 import { Calendar } from 'lucide-react';
 
 function EmptyState({ title, subtitle }: { title: string; subtitle?: string }) {
@@ -109,6 +110,13 @@ export function TodayView() {
     onToggleFavorite: handleToggleFavorite,
     onDelete: handleDelete,
     onReminderChanged: loadReminders,
+    onSwapCards: async (aId: string, bId: string) => {
+      const a = tasks.find(t => t.id === aId);
+      const b = tasks.find(t => t.id === bId);
+      if (!a || !b) return;
+      await swapCardOrder(a, b);
+      await reload();
+    },
   };
 
   return (
@@ -184,7 +192,7 @@ export function TodayView() {
   );
 }
 
-function TaskSection({ title, status, tasks, onStatusChange, onToggleFavorite, onDelete, selectionMode, selectedIds, onToggleSelect, remindersMap, onReminderChanged }: {
+function TaskSection({ title, status, tasks, onStatusChange, onToggleFavorite, onDelete, selectionMode, selectedIds, onToggleSelect, remindersMap, onReminderChanged, onSwapCards }: {
   title: string;
   status: TaskStatus;
   tasks: Task[];
@@ -196,7 +204,11 @@ function TaskSection({ title, status, tasks, onStatusChange, onToggleFavorite, o
   onToggleSelect: (t: Task) => void;
   remindersMap: Record<string, string>;
   onReminderChanged: () => void;
+  onSwapCards: (aId: string, bId: string) => Promise<void>;
 }) {
+  const { gridRef, animateSwap } = useCardSwap();
+  const swapGroupId = `today-${status}`;
+  const handleSwap = (aId: string, bId: string) => animateSwap(() => onSwapCards(aId, bId));
   return (
     <div>
       <div className="flex items-center gap-2 mb-3">
@@ -204,7 +216,7 @@ function TaskSection({ title, status, tasks, onStatusChange, onToggleFavorite, o
         <h2 className="text-sm font-medium text-foreground">{title}</h2>
         <span className="text-xs text-muted-foreground">({tasks.length})</span>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+      <div ref={gridRef} data-swap-group={swapGroupId} className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
         {tasks.map(task => (
           <TaskCard
             key={task.id}
@@ -217,6 +229,8 @@ function TaskSection({ title, status, tasks, onStatusChange, onToggleFavorite, o
             onToggleSelect={onToggleSelect}
             reminderAt={remindersMap[task.id] ?? (task as any).reminder ?? null}
             onReminderChanged={onReminderChanged}
+            swapGroupId={swapGroupId}
+            onSwapCards={handleSwap}
           />
         ))}
       </div>

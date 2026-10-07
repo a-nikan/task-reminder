@@ -4,6 +4,7 @@ import type { Task, TaskStatus } from '../types';
 import { TaskCard } from './TaskCard';
 import { BulkToolbar } from './BulkToolbar';
 import { useTaskSelection, useActiveReminders } from '../hooks/useTaskSelection';
+import { useCardSwap, swapCardOrder } from '../hooks/useCardSwap';
 import { Star, StarIcon } from 'lucide-react';
 
 export function ImportantView() {
@@ -20,6 +21,15 @@ export function ImportantView() {
     await refreshCurrentView();
     await loadReminders();
   };
+
+  const { gridRef, animateSwap } = useCardSwap();
+  const handleSwap = (aId: string, bId: string) => animateSwap(async () => {
+    const a = tasks.find(t => t.id === aId);
+    const b = tasks.find(t => t.id === bId);
+    if (!a || !b) return;
+    await swapCardOrder(a, b);
+    await reload();
+  });
 
   const handleStatusChange = async (id: string, status: TaskStatus) => {
     await window.electronAPI.changeTaskStatus(id, status);
@@ -93,7 +103,7 @@ export function ImportantView() {
             <p className="text-sm text-muted-foreground">روی ستاره تسک‌ها کلیک کنید تا مهم شوند</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+          <div ref={gridRef} data-swap-group="important" className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
             {tasks.map(task => (
               <TaskCard
                 key={task.id}
@@ -108,6 +118,8 @@ export function ImportantView() {
                 onToggleSelect={(t) => toggleSelect(t.id)}
                 reminderAt={remindersMap[task.id] ?? (task as any).reminder ?? null}
                 onReminderChanged={loadReminders}
+                swapGroupId="important"
+                onSwapCards={handleSwap}
               />
             ))}
           </div>

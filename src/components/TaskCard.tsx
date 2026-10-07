@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useStore } from '../store';
 import { cn, getToday, getTomorrow, formatTaskDateLocalized, formatReminderLocalized, fallbackAccent, pickOnColor, cardGradient, getTransparency, CARD_TRANSPARENCY_KEY } from '../utils';
 import type { Task, TaskStatus, Subtask } from '../types';
-import { Check, Clock, Star, ChevronDown, ChevronUp, Edit2, Copy, CheckSquare, Plus, Trash2, X, Calendar, Bell, BellOff, Pin, PinOff } from 'lucide-react';
+import { Check, Clock, Star, ChevronDown, ChevronUp, Edit2, Copy, CheckSquare, Plus, Trash2, X, Calendar, Bell, BellOff, Pin, PinOff, GripVertical } from 'lucide-react';
 import { DateInput } from './DateInput';
 import { ColorSwatches } from './ColorSwatches';
 import { followReminderAfterMove, armReminderIfFuture } from './TaskForm';
@@ -22,6 +22,8 @@ interface TaskCardProps {
   onToggleSelect?: (task: Task) => void;
   reminderAt?: string | null;
   onReminderChanged?: () => void;
+  swapGroupId?: string | null;
+  onSwapCards?: (aId: string, bId: string) => Promise<void>;
 }
 
 export function formatReminderFa(iso: string | null | undefined): string {
@@ -63,6 +65,8 @@ export function TaskCard({
   onToggleSelect,
   reminderAt,
   onReminderChanged,
+  swapGroupId,
+  onSwapCards,
 }: TaskCardProps) {
   const { refreshCurrentView, showToast, setSelectedTask, setShowTaskDetail, settings, setEditingTask, setShowEditTaskForm } = useStore();
   const [expanded, setExpanded] = useState(false);
@@ -153,6 +157,59 @@ export function TaskCard({
     onReminderChanged?.();
   };
 
+  // Swap drag & drop (exchange places with another card in the same group)
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [dragging, setDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const dragInfo = useRef<{ startX: number; startY: number; active: boolean } | null>(null);
+
+  const clearSwapTarget = () => {
+    document.querySelectorAll('.swap-target').forEach(el => el.classList.remove('swap-target'));
+  };
+
+  const handleSwapPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (selectionMode || !onSwapCards || !swapGroupId) return;
+    e.stopPropagation();
+    e.preventDefault();
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+    dragInfo.current = { startX: e.clientX, startY: e.clientY, active: false };
+  };
+
+  const handleSwapPointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+    const info = dragInfo.current;
+    if (!info) return;
+    const dx = e.clientX - info.startX;
+    const dy = e.clientY - info.startY;
+    if (!info.active) {
+      if (Math.hypot(dx, dy) < 7) return;
+      info.active = true;
+      setDragging(true);
+    }
+    setDragOffset({ x: dx, y: dy });
+    clearSwapTarget();
+    const under = document.elementFromPoint(e.clientX, e.clientY);
+    const cardEl = under?.closest?.('[data-swap-id]') as HTMLElement | null;
+    const groupEl = under?.closest?.('[data-swap-group]') as HTMLElement | null;
+    if (cardEl && groupEl && groupEl.getAttribute('data-swap-group') === swapGroupId) {
+      const targetId = cardEl.getAttribute('data-swap-id');
+      if (targetId && targetId !== task.id) cardEl.classList.add('swap-target');
+    }
+  };
+
+  const handleSwapEnd = (allowDrop: boolean) => {
+    const info = dragInfo.current;
+    dragInfo.current = null;
+    if (!info) return;
+    const target = document.querySelector('.swap-target') as HTMLElement | null;
+    const targetId = target?.getAttribute('data-swap-id');
+    clearSwapTarget();
+    setDragging(false);
+    setDragOffset({ x: 0, y: 0 });
+    if (allowDrop && info.active && targetId && targetId !== task.id && onSwapCards) {
+      void onSwapCards(task.id, targetId);
+    }
+  };
+
   const handleToggleSubtask = async (subtaskId: string) => {
     if (task.linked_id) {
       await window.electronAPI.toggleSubtask(task.id, subtaskId);
@@ -223,13 +280,19 @@ export function TaskCard({
   const hasStrip = !!task.subtasks && task.subtasks.length > 0;
   const accent = task.color || fallbackAccent(task.id);
   const onColor = pickOnColor(accent);
+  const cardT = getTransparency(settings, CARD_TRANSPARENCY_KEY, 0);
   const displayDateLabel = dateLabel && /^\d{4}-\d{2}-\d{2}$/.test(dateLabel)
     ? formatTaskDateLocalized(dateLabel, settings.calendarType)
     : dateLabel;
 
   return (
-    <div className={cn('flex flex-col transition-all duration-200',
-      !expanded && !selectionMode && 'hover:-translate-y-0.5 hover:rotate-[-0.4deg]')}>
+    <div
+      ref={cardRef}
+      data-swap-id={swapGroupId ? task.id : undefined}
+      style={dragging ? { transform: `translate(${dragOffset.x}px, ${dragOffset.y}px)` } : undefined}
+      className={cn('flex flex-col transition-all duration-200',
+      !expanded && !selectionMode && 'hover:-translate-y-0.5 hover:rotate-[-0.4deg]',
+      dragging && 'relative z-50 scale-[1.04] rotate-[1.5deg] pointer-events-none transition-none')} >
     <div
       className={cn(
         'relative rounded-t-2xl bg-card transition-all duration-200 group flex flex-col min-h-[150px]',
@@ -243,7 +306,7 @@ export function TaskCard({
           'hover:shadow-[0_10px_24px_-8px_rgba(0,0,0,0.28)]'
       )}
       style={{
-        background: cardGradient(accent, getTransparency(settings, CARD_TRANSPARENCY_KEY, 0)),
+        background: cardGradient(accent, cardT),
         color: onColor,
       }}
     >
@@ -324,6 +387,20 @@ export function TaskCard({
         </div>
 
         <div className="flex items-start gap-1 shrink-0">
+          {onSwapCards && swapGroupId && !selectionMode && (
+            <button
+              onPointerDown={handleSwapPointerDown}
+              onPointerMove={handleSwapPointerMove}
+              onPointerUp={() => handleSwapEnd(true)}
+              onPointerCancel={() => handleSwapEnd(false)}
+              onClick={(e) => e.stopPropagation()}
+              onContextMenu={(e) => e.preventDefault()}
+              title="جابه‌جایی (درگ)"
+              className="touch-none select-none cursor-grab active:cursor-grabbing opacity-60 p-1 rounded hover:bg-muted transition-all [@media(hover:hover)]:opacity-0 group-hover:opacity-100"
+            >
+              <GripVertical className="w-3.5 h-3.5 opacity-70" />
+            </button>
+          )}
           {!selectionMode && (
             <button onClick={(e) => { e.stopPropagation(); openFullEdit(); }} title="ویرایش کامل"
               className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-muted transition-all">
@@ -526,11 +603,12 @@ export function TaskCard({
                 style={{ borderColor: `${onColor}59` }}
               />
               <div
-                className={cn(
-                  'absolute inset-0 transition-all duration-300 ease-out shadow-[inset_0_-1px_2px_rgba(0,0,0,0.12)]',
-                  st.completed && 'opacity-0 translate-y-4 rotate-6 scale-75'
-                )}
-                style={{ backgroundColor: `${onColor}40` }}
+                className="absolute inset-0 transition-all duration-300 ease-out"
+                style={{ background: st.completed ? 'hsl(var(--background))' : cardGradient(accent, cardT) }}
+              />
+              <div
+                className={cn('absolute inset-0 transition-opacity duration-300 pointer-events-none', st.completed && 'opacity-0')}
+                style={{ background: `repeating-linear-gradient(45deg, transparent 0px, transparent 3px, ${onColor}14 3px, ${onColor}14 4px)` }}
               />
             </div>
           ))}

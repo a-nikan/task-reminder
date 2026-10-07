@@ -144,3 +144,17 @@ body {
   65% { transform: scale(1.18) rotate(-22deg); opacity: 1; }
   100% { transform: scale(1) rotate(-14deg); opacity: 1; }
 }
+
+/* Drop-target highlight for card swap drag & drop */
+@keyframes swap-wiggle {
+  0%, 100% { transform: rotate(0deg) scale(1.03); }
+  25% { transform: rotate(1.4deg) scale(1.03); }
+  75% { transform: rotate(-1.4deg) scale(1.03); }
+}
+
+.swap-target {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 3px;
+  animation: swap-wiggle 0.45s ease-in-out infinite;
+  z-index: 30;
+}
