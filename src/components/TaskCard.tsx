@@ -300,7 +300,7 @@ export function TaskCard({
       dir={isLtrCard ? 'ltr' : undefined}
       style={dragging ? { transform: `translate(${dragOffset.x}px, ${dragOffset.y}px)` } : undefined}
       className={cn('flex flex-col transition-all duration-200',
-      !expanded && !selectionMode && 'hover:-translate-y-0.5 hover:rotate-[-0.4deg]',
+      !expanded && !selectionMode && 'hover:-translate-y-0.5 hover:rotate-[-0.4deg] hover:scale-[1.03] hover:z-30',
       dragging && 'relative z-50 scale-[1.04] rotate-[1.5deg] pointer-events-none transition-none')} >
     <div
       className={cn(
@@ -367,6 +367,9 @@ export function TaskCard({
           <div className={cn('text-sm font-medium leading-snug line-clamp-3 break-words', task.status === 'done' && 'line-through opacity-60')} title={task.title}>
             {task.title}
           </div>
+          {task.description ? (
+            <p className="text-xs opacity-70 line-clamp-2 break-words mt-0.5">{task.description}</p>
+          ) : null}
               <div className="flex items-center gap-2 flex-wrap mt-auto pt-2">
                 {showDate && displayDateLabel && (
                   <span className={cn('text-xs sm:text-[11px] flex items-center gap-1', !dateLabelColor && 'opacity-75', dateLabelColor)}>
@@ -524,7 +527,7 @@ export function TaskCard({
             {showDatePicker && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowDatePicker(false)} />
-                <div className="fixed inset-0 z-50 m-auto w-72 h-fit max-h-[calc(90vh/var(--zoom,1))] overflow-y-auto bg-card text-foreground border-2 border-border rounded-xl shadow-2xl p-4 animate-scale-in">
+                <div className="fixed inset-0 z-50 m-auto w-72 h-fit max-h-[90%] overflow-y-auto bg-card text-foreground border-2 border-border rounded-xl shadow-2xl p-4 animate-scale-in">
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-sm font-medium">انتخاب تاریخ</span>
                     <button onClick={() => setShowDatePicker(false)} className="p-1 rounded hover:bg-muted">
@@ -545,7 +548,7 @@ export function TaskCard({
             {showCopyModal && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowCopyModal(false)} />
-                <div className="fixed inset-0 z-50 m-auto w-72 h-fit max-h-[calc(90vh/var(--zoom,1))] overflow-y-auto bg-card text-foreground border-2 border-border rounded-xl shadow-2xl p-4 animate-scale-in">
+                <div className="fixed inset-0 z-50 m-auto w-72 h-fit max-h-[90%] overflow-y-auto bg-card text-foreground border-2 border-border rounded-xl shadow-2xl p-4 animate-scale-in">
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-sm font-medium">کپی لینک‌شده به تاریخ</span>
                     <button onClick={() => setShowCopyModal(false)} className="p-1 rounded hover:bg-muted">
@@ -567,7 +570,7 @@ export function TaskCard({
             {showReminderModal && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowReminderModal(false)} />
-                <div className="fixed inset-0 z-50 m-auto w-72 h-fit max-h-[calc(90vh/var(--zoom,1))] overflow-y-auto bg-card text-foreground border-2 border-border rounded-xl shadow-2xl p-4 animate-scale-in">
+                <div className="fixed inset-0 z-50 m-auto w-72 h-fit max-h-[90%] overflow-y-auto bg-card text-foreground border-2 border-border rounded-xl shadow-2xl p-4 animate-scale-in">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-sm font-medium">هشدار تسک</span>
                     <button onClick={() => setShowReminderModal(false)} className="p-1 rounded hover:bg-muted">
@@ -618,14 +621,35 @@ export function TaskCard({
                 className="absolute inset-0 border border-dashed"
                 style={{ borderColor: `${onColor}59` }}
               />
-              <div
-                className="absolute inset-0 transition-all duration-300 ease-out"
-                style={{ background: st.completed ? 'hsl(var(--background))' : cardGradient(accent, cardT) }}
-              />
-              <div
-                className={cn('absolute inset-0 transition-opacity duration-300 pointer-events-none', st.completed && 'opacity-0')}
-                style={{ background: `repeating-linear-gradient(45deg, transparent 0px, transparent 3px, ${onColor}14 3px, ${onColor}14 4px)` }}
-              />
+              {st.completed ? (
+                <>
+                  <div className="absolute inset-0" style={{ background: 'hsl(var(--background))' }} />
+                  <div className="absolute inset-0 flex">
+                    {[0, 1, 2].map(i => (
+                      <span
+                        key={i}
+                        className="flex-1 tick-crumb"
+                        style={{
+                          background: cardGradient(accent, cardT),
+                          animationDelay: `${i * 90}ms`,
+                          '--tilt': i % 2 === 0 ? 1 : -1,
+                        } as React.CSSProperties}
+                      />
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div
+                    className="absolute inset-0"
+                    style={{ background: cardGradient(accent, cardT) }}
+                  />
+                  <div
+                    className="absolute inset-0 pointer-events-none"
+                    style={{ background: `repeating-linear-gradient(45deg, transparent 0px, transparent 3px, ${onColor}14 3px, ${onColor}14 4px)` }}
+                  />
+                </>
+              )}
             </div>
           ))}
         </div>

@@ -77,6 +77,19 @@ export default function App() {
       }
     });
 
+    window.electronAPI.onEditTask(async (data) => {
+      try {
+        const task = await window.electronAPI.getTaskById(data.taskId);
+        if (task) {
+          useStore.getState().setEditingTask(task);
+          useStore.getState().setShowEditTaskForm(true);
+          refreshCurrentView();
+        }
+      } catch {
+        // ignore
+      }
+    });
+
     window.electronAPI.onTasksChanged(async (taskId) => {
       try {
         await refreshCurrentView();
@@ -106,21 +119,22 @@ export default function App() {
     if (window.location.hash.match(/^#\/?widget\//)) return;
     const s = parseInt(settings.uiScale || '100', 10);
     const z = isNaN(s) ? 1 : Math.min(2, Math.max(0.5, s / 100));
-    document.documentElement.style.setProperty('--zoom', String(z));
     const root = document.getElementById('root');
     if (root) {
+      // Pure zoom only: the root keeps its natural 100% x 100% box and fills
+      // the viewport at any scale. Never resize the root to "compensate" —
+      // that squeezes content into a corner (proven by screenshots).
       const st = root.style as any;
-      // zoom scales layout too: shrink the root box so painted output fills exactly 100vw x 100vh
       st.zoom = String(z);
-      st.width = `${100 / z}vw`;
-      st.height = `${100 / z}vh`;
+      st.width = '';
+      st.height = '';
     }
   }, [settings.uiScale]);
 
   const widgetMatch = window.location.hash.match(/^#\/?widget\/(.+)$/);
   if (widgetMatch) {
     return (
-      <div className="h-screen w-screen overflow-hidden bg-transparent">
+      <div className="h-full w-full overflow-hidden bg-transparent">
         <TaskWidget taskId={decodeURIComponent(widgetMatch[1])} />
         <Toast />
       </div>

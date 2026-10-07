@@ -81,6 +81,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onShowToday: (callback: () => void) => ipcRenderer.on('show-today', () => callback()),
   onNavigateTo: (callback: (view: string) => void) => ipcRenderer.on('navigate-to', (_event, view) => callback(view)),
   onOpenTask: (callback: (data: { taskId: string }) => void) => ipcRenderer.on('open-task', (_event, data) => callback(data)),
+  onEditTask: (callback: (data: { taskId: string }) => void) => ipcRenderer.on('edit-task', (_event, data) => callback(data)),
 
   // Shell
   openExternal: (url: string) => shell.openExternal(url),
@@ -97,6 +98,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   widgetClose: (taskId: string) => ipcRenderer.invoke('widget:close', taskId),
   widgetSetOnTop: (taskId: string, onTop: boolean) => ipcRenderer.invoke('widget:setOnTop', taskId, onTop),
   showTaskInMain: (taskId: string) => ipcRenderer.invoke('widget:showTask', taskId),
+  editTaskInMain: (taskId: string) => ipcRenderer.invoke('widget:editTask', taskId),
+  widgetResize: (taskId: string) => ipcRenderer.invoke('widget:resize', taskId),
   notifyWidgetChanged: (taskId: string) => ipcRenderer.invoke('widget:changed', taskId),
   onTasksChanged: (callback: (taskId: string) => void) =>
     ipcRenderer.on('tasks:changed', (_event, taskId) => callback(taskId)),

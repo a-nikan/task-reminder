@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store';
 import { cn, getToday, getTomorrow, RECURRENCE_OPTIONS, REMINDER_OPTIONS, parseNaturalLanguage } from '../utils';
 import type { Task, TaskPriority, Subtask } from '../types';
@@ -27,9 +27,11 @@ interface TaskFormProps {
   submitLabel: string;
   onSubmit: (data: TaskFormData) => Promise<void> | void;
   onCancel: () => void;
+  autoSave?: boolean;
+  onAutoSave?: (data: TaskFormData) => Promise<void> | void;
 }
 
-export function TaskForm({ initial, submitLabel, onSubmit, onCancel }: TaskFormProps) {
+export function TaskForm({ initial, submitLabel, onSubmit, onCancel, autoSave, onAutoSave }: TaskFormProps) {
   const { categories } = useStore();
   const [title, setTitle] = useState(initial.title);
   const [description, setDescription] = useState(initial.description);
@@ -48,6 +50,35 @@ export function TaskForm({ initial, submitLabel, onSubmit, onCancel }: TaskFormP
   const [busy, setBusy] = useState(false);
   const [widget, setWidget] = useState(initial.widget);
   const isNativeForm = typeof (window as any).Capacitor !== 'undefined' && !!(window as any).Capacitor.isNativePlatform?.();
+
+  // Auto-save mode (edit form): persist ~800ms after the user stops typing
+  const autoSaveFirstRun = useRef(true);
+  useEffect(() => {
+    if (!autoSave || !onAutoSave) return;
+    if (autoSaveFirstRun.current) {
+      autoSaveFirstRun.current = false;
+      return;
+    }
+    if (!title.trim()) return;
+    const t = setTimeout(() => {
+      void onAutoSave({
+        title: title.trim(),
+        description,
+        date,
+        time,
+        priority,
+        categoryId,
+        color,
+        tags: taskTags,
+        subtasks,
+        recurrence,
+        reminderOffset,
+        widget,
+      });
+    }, 800);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSave, title, description, date, time, priority, categoryId, color, taskTags, subtasks, recurrence, reminderOffset, widget]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,7 +131,7 @@ export function TaskForm({ initial, submitLabel, onSubmit, onCancel }: TaskFormP
   };
 
   return (
-    <form onSubmit={handleSubmit} className="p-4 max-h-[calc(70vh/var(--zoom,1))] overflow-y-auto">
+    <form onSubmit={handleSubmit} className="p-4 overflow-y-auto">
       <div className="mb-4">
         <div className="relative">
           <input
@@ -118,8 +149,11 @@ export function TaskForm({ initial, submitLabel, onSubmit, onCancel }: TaskFormP
         </div>
       </div>
 
-      {/* Subtasks */}
       <div className="mb-4">
+        <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className="w-full px-3 py-2 rounded-xl bg-muted border border-border text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none" placeholder="شرح تسک... (اختیاری)" />
+      </div>
+
+      {/* Subtasks */}      <div className="mb-4">
         <label className="text-xs text-muted-foreground mb-1.5 block">سابتسک‌ها (اختیاری)</label>
         {subtasks.length > 0 && (
           <div className="space-y-1 mb-2">
@@ -239,27 +273,23 @@ export function TaskForm({ initial, submitLabel, onSubmit, onCancel }: TaskFormP
               {RECURRENCE_OPTIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
             </select>
           </div>
-
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">یادآوری نسبی</label>
             <select value={reminderOffset} onChange={(e) => setReminderOffset(Number(e.target.value))} className="w-full px-2 py-1.5 rounded-lg bg-background border border-border text-xs focus:outline-none">
               {REMINDER_OPTIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
             </select>
           </div>
-
-          <div>
-            <label className="text-xs text-muted-foreground mb-1 block">توضیحات</label>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className="w-full px-2 py-1.5 rounded-lg bg-background border border-border text-xs focus:outline-none resize-none" placeholder="توضیحات اختیاری..." />
-          </div>
         </div>
       )}
 
       <div className="flex gap-2">
-        <button type="submit" disabled={busy} className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50">
-          {busy ? '...' : submitLabel}
-        </button>
+        {!autoSave && (
+          <button type="submit" disabled={busy} className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50">
+            {busy ? '...' : submitLabel}
+          </button>
+        )}
         <button type="button" onClick={onCancel} className="px-4 py-2.5 rounded-xl bg-muted text-muted-foreground text-sm hover:bg-muted/80 transition-colors">
-          لغو
+          {autoSave ? 'بستن' : 'لغو'}
         </button>
       </div>
     </form>

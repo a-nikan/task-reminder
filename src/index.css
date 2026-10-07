@@ -65,9 +65,13 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+html, body {
+  height: 100%;
+}
+
 #root {
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
 }
 
@@ -157,4 +161,15 @@ body {
   outline-offset: 3px;
   animation: swap-wiggle 0.45s ease-in-out infinite;
   z-index: 30;
+}
+
+/* Subtask tick crumble: each tick breaks into 3 crumbs that fall and fade */
+@keyframes tick-crumb-fall {
+  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+  30% { transform: translateY(2px) rotate(calc(var(--tilt, 1) * 3deg)); opacity: 1; }
+  100% { transform: translateY(13px) rotate(calc(var(--tilt, 1) * -7deg)); opacity: 0; }
+}
+
+.tick-crumb {
+  animation: tick-crumb-fall 0.55s ease-in forwards;
 }

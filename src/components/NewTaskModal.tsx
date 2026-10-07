@@ -49,7 +49,7 @@ export function NewTaskModal() {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowNewTaskForm(false)} />
-        <div className="relative w-full max-w-lg mx-4 bg-card rounded-2xl border border-border shadow-2xl animate-slide-up max-h-[calc(90vh/var(--zoom,1))] overflow-y-auto">
+        <div className="relative w-full max-w-lg mx-4 bg-card rounded-2xl border border-border shadow-2xl animate-slide-up max-h-[90%] overflow-y-auto">
         <div className="flex items-center justify-between p-4 border-b border-border">
           <h2 className="text-base font-bold">تسک جدید</h2>
           <button onClick={() => setShowNewTaskForm(false)} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground transition-colors">

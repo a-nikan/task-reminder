@@ -70,9 +70,11 @@ export function seedDefaultData(database: DatabaseSchema): void {
       cardTransparency: '0',
       widgetTransparency: '0',
       uiScale: '100',
+      widgetScale: '100',
     };
   }
   if (!database.settings.calendarType) database.settings.calendarType = 'gregorian';
   if (!database.settings.widgetTransparency) database.settings.widgetTransparency = '0';
   if (!database.settings.uiScale) database.settings.uiScale = '100';
+  if (!database.settings.widgetScale) database.settings.widgetScale = '100';
 }

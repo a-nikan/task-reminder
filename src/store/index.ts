@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Task, Category, Tag, Settings, TaskStats, ViewType, TaskStatus, TaskPriority, CalendarView } from '../types';
+import { applyAccentColor } from '../utils';
 
 declare global {
   interface Window {
@@ -53,6 +54,7 @@ declare global {
       onNewTask: (callback: () => void) => void;
       onNotificationAction: (callback: (data: { taskId: string; reminderId: string; title: string }) => void) => void;
       onOpenTask: (callback: (data: { taskId: string }) => void) => void;
+      onEditTask: (callback: (data: { taskId: string }) => void) => void;
       onNavigateTo: (callback: (view: string) => void) => void;
       getVersion: () => Promise<string>;
       setAutoLaunch: (enabled: boolean) => Promise<any>;
@@ -61,6 +63,8 @@ declare global {
       widgetClose: (taskId: string) => Promise<any>;
       widgetSetOnTop: (taskId: string, onTop: boolean) => Promise<any>;
       showTaskInMain: (taskId: string) => Promise<any>;
+      editTaskInMain: (taskId: string) => Promise<any>;
+      widgetResize: (taskId: string) => Promise<any>;
       notifyWidgetChanged: (taskId: string) => Promise<any>;
       onTasksChanged: (callback: (taskId: string) => void) => void;
       copyLinkedTask: (taskId: string, newDate: string) => Promise<Task>;
@@ -237,6 +241,7 @@ export const useStore = create<AppState>((set, get) => ({
     }
 
     set({ settings, theme, accentColor: settings.accentColor || 'purple' });
+    applyAccentColor(settings.accentColor || 'purple');
   },
   updateSettings: async (newSettings) => {
     await window.electronAPI.updateSettings(newSettings);
@@ -284,6 +289,7 @@ export const useStore = create<AppState>((set, get) => ({
   accentColor: 'purple',
   setAccentColor: (color) => {
     get().updateSettings({ accentColor: color });
+    applyAccentColor(color);
   },
 
   isMaximized: false,

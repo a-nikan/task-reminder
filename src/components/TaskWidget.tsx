@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../store';
 import {
   cn,
@@ -11,7 +11,7 @@ import {
   WIDGET_TRANSPARENCY_KEY,
 } from '../utils';
 import type { Task, TaskStatus, Subtask } from '../types';
-import { Check, Clock, X, Pin, PinOff, AlignLeft, AlignRight } from 'lucide-react';
+import { Check, Clock, X, Pin, PinOff, AlignLeft, AlignRight, Plus, Trash2, Edit2 } from 'lucide-react';
 
 function readWidgetOnTop(settings: Record<string, string> | undefined, taskId: string): boolean {
   try {
@@ -29,6 +29,9 @@ export function TaskWidget({ taskId }: { taskId: string }) {
   const [task, setTask] = useState<Task | null>(null);
   const [reminder, setReminder] = useState<any>(null);
   const [onTop, setOnTop] = useState(false);
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
+  const [descExpanded, setDescExpanded] = useState(false);
+  const widgetScale = Math.min(200, Math.max(50, parseInt(settings.widgetScale || '100', 10) || 100));
 
   const load = async () => {
     try {
@@ -61,6 +64,18 @@ export function TaskWidget({ taskId }: { taskId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskId]);
 
+  // Grow/shrink the window itself when widget scale changes so content never clips.
+  // Geometry is stored canonical (at 100%); main re-applies it at current scale.
+  const prevScaleRef = useRef(widgetScale);
+  useEffect(() => {
+    const prev = prevScaleRef.current;
+    prevScaleRef.current = widgetScale;
+    if (prev !== widgetScale && prev > 0) {
+      void window.electronAPI.widgetResize(taskId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [widgetScale]);
+
   if (!task) return null;
 
   const accent = (task as any).color || fallbackAccent(task.id);
@@ -88,6 +103,22 @@ export function TaskWidget({ taskId }: { taskId: string }) {
     refreshCurrentView();
   };
 
+  const handleAddSubtask = async () => {
+    if (!newSubtaskTitle.trim()) return;
+    await window.electronAPI.addSubtask(task.id, newSubtaskTitle.trim());
+    setNewSubtaskTitle('');
+    await window.electronAPI.notifyWidgetChanged(task.id);
+    await load();
+    refreshCurrentView();
+  };
+
+  const handleRemoveSubtask = async (subtaskId: string) => {
+    await window.electronAPI.removeSubtask(task.id, subtaskId);
+    await window.electronAPI.notifyWidgetChanged(task.id);
+    await load();
+    refreshCurrentView();
+  };
+
   const handleSnooze = async (minutes: number) => {
     await window.electronAPI.snoozeReminder(task.id, minutes);
     const labels: Record<number, string> = { 5: '۵', 10: '۱۰', 30: '۳۰' };
@@ -106,6 +137,10 @@ export function TaskWidget({ taskId }: { taskId: string }) {
 
   const handleOpenDetails = async () => {
     await window.electronAPI.showTaskInMain(task.id);
+  };
+
+  const handleEdit = async () => {
+    await window.electronAPI.editTaskInMain(task.id);
   };
 
   const handleClose = async () => {
@@ -129,7 +164,7 @@ export function TaskWidget({ taskId }: { taskId: string }) {
   };
 
   return (
-    <div className="h-screen w-screen bg-transparent p-1.5 overflow-hidden" dir={isLtrWidget ? 'ltr' : undefined}>
+    <div className="h-full w-full bg-transparent p-1.5 overflow-hidden" dir={isLtrWidget ? 'ltr' : undefined} style={{ zoom: widgetScale / 100 }}>
       <div
         className="h-full flex flex-col rounded-2xl overflow-hidden"
         style={{
@@ -163,9 +198,26 @@ export function TaskWidget({ taskId }: { taskId: string }) {
           >
             {isLtrWidget ? <AlignLeft className="w-3.5 h-3.5" /> : <AlignRight className="w-3.5 h-3.5 opacity-70" />}
           </button>
+          <button
+            onClick={handleEdit}
+            title="ویرایش در برنامه اصلی"
+            className="no-drag p-1 rounded-md shrink-0 transition-colors hover:bg-black/10"
+            style={{ color: onColor }}
+          >
+            <Edit2 className="w-3.5 h-3.5 opacity-70" />
+          </button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-2.5 pb-1.5 min-h-0">
+          {task.description ? (
+            <p
+              onClick={() => setDescExpanded(!descExpanded)}
+              title={descExpanded ? 'بستن' : 'برای خواندن کامل کلیک کن'}
+              className={cn('text-[11px] opacity-75 break-words mb-1 cursor-pointer', descExpanded ? 'max-h-40 overflow-y-auto' : 'line-clamp-2')}
+            >
+              {task.description}
+            </p>
+          ) : null}
           {(task.date || task.time || effectiveReminder) && (
             <div className="flex items-center gap-2 flex-wrap text-[11px] opacity-90 mb-1.5">
               {task.date && <span>{formatTaskDateLocalized(task.date, settings.calendarType)}</span>}
@@ -182,7 +234,7 @@ export function TaskWidget({ taskId }: { taskId: string }) {
             <div className="space-y-1 mb-1.5">
               <div className="text-[10px] opacity-70">سابتسک‌ها ({subtaskDone}/{(task.subtasks || []).length})</div>
               {(task.subtasks || []).map((st: Subtask) => (
-                <div key={st.id} className="flex items-center gap-2 py-0.5">
+                <div key={st.id} className="flex items-center gap-2 py-0.5 group/wsub">
                   <button onClick={() => handleToggleSubtask(st.id)} className="shrink-0 no-drag">
                     <div
                       className="w-4 h-4 rounded border flex items-center justify-center transition-all"
@@ -198,8 +250,28 @@ export function TaskWidget({ taskId }: { taskId: string }) {
                   <span className={cn('text-xs flex-1 break-words', st.completed && 'line-through opacity-60')}>
                     {st.title}
                   </span>
+                  <button onClick={() => handleRemoveSubtask(st.id)} title="حذف سابتسک"
+                    className="no-drag shrink-0 p-0.5 rounded opacity-40 hover:opacity-100 transition-opacity">
+                    <Trash2 className="w-3 h-3" style={{ color: onColor }} />
+                  </button>
                 </div>
               ))}
+              <div className="flex items-center gap-1.5 mt-1 no-drag">
+                <input
+                  value={newSubtaskTitle}
+                  onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleAddSubtask(); }}
+                  placeholder="سابتسک جدید..."
+                  className="flex-1 min-w-0 text-[11px] px-2 py-1 rounded-lg border focus:outline-none"
+                  style={{ backgroundColor: `${onColor}14`, borderColor: `${onColor}30`, color: onColor }}
+                />
+                <button onClick={handleAddSubtask} title="افزودن سابتسک"
+                  className="p-1 rounded-lg transition-opacity hover:opacity-80"
+                  style={{ backgroundColor: `${onColor}1f`, color: onColor, border: `1px solid ${onColor}40` }}
+                >
+                  <Plus className="w-3 h-3" />
+                </button>
+              </div>
             </div>
           )}
 

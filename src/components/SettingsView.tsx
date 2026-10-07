@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../store';
-import { cn, TRANSPARENCY_STEPS } from '../utils';
+import { cn, TRANSPARENCY_STEPS, applyAccentColor } from '../utils';
 import { Sun, Moon, Monitor, Download, Upload, Keyboard, Info, Bell, Palette, Check, Trash2, Save, X, Loader2, RefreshCw, Wifi, Copy } from 'lucide-react';
 import {
   syncNow as lanSyncNow,
@@ -60,6 +60,7 @@ export function SettingsView() {
   const [draftCardT, setDraftCardT] = useState(settings.cardTransparency || '0');
   const [draftWidgetT, setDraftWidgetT] = useState(settings.widgetTransparency || '0');
   const [draftScale, setDraftScale] = useState(settings.uiScale || '100');
+  const [draftWidgetScale, setDraftWidgetScale] = useState(settings.widgetScale || '100');
   const [draftShowOnStartup, setDraftShowOnStartup] = useState(settings.showOnStartup !== 'false');
   const [draftMorning, setDraftMorning] = useState(settings.morningNotification !== 'false');
   const [draftAutoLaunch, setDraftAutoLaunch] = useState(false);
@@ -131,6 +132,7 @@ export function SettingsView() {
     setDraftCardT(settings.cardTransparency || '0');
     setDraftWidgetT(settings.widgetTransparency || '0');
     setDraftScale(settings.uiScale || '100');
+    setDraftWidgetScale(settings.widgetScale || '100');
     setDraftShowOnStartup(settings.showOnStartup !== 'false');
     setDraftMorning(settings.morningNotification !== 'false');
   }, [settings, theme, accentColor]);
@@ -140,6 +142,12 @@ export function SettingsView() {
     if (!dirty) return;
     applyThemeToDom(draftTheme);
   }, [draftTheme, dirty]);
+
+  // Live preview of accent color while editing (persisted only on save)
+  useEffect(() => {
+    if (!dirty) return;
+    applyAccentColor(draftAccent);
+  }, [draftAccent, dirty]);
 
   const markDirty = () => setDirty(true);
 
@@ -151,11 +159,12 @@ export function SettingsView() {
       draftCardT !== (settings.cardTransparency || '0') ||
       draftWidgetT !== (settings.widgetTransparency || '0') ||
       draftScale !== (settings.uiScale || '100') ||
+      draftWidgetScale !== (settings.widgetScale || '100') ||
       draftShowOnStartup !== (settings.showOnStartup !== 'false') ||
       draftMorning !== (settings.morningNotification !== 'false') ||
       draftAutoLaunch !== persistedAutoLaunch
     );
-  }, [dirty, draftTheme, theme, draftAccent, accentColor, draftCalendar, settings, draftCardT, draftWidgetT, draftScale, draftShowOnStartup, draftMorning, draftAutoLaunch, persistedAutoLaunch]);
+  }, [dirty, draftTheme, theme, draftAccent, accentColor, draftCalendar, settings, draftCardT, draftWidgetT, draftScale, draftWidgetScale, draftShowOnStartup, draftMorning, draftAutoLaunch, persistedAutoLaunch]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -168,6 +177,7 @@ export function SettingsView() {
       if (draftCardT !== (settings.cardTransparency || '0')) patch.cardTransparency = draftCardT;
       if (draftWidgetT !== (settings.widgetTransparency || '0')) patch.widgetTransparency = draftWidgetT;
       if (draftScale !== (settings.uiScale || '100')) patch.uiScale = draftScale;
+      if (draftWidgetScale !== (settings.widgetScale || '100')) patch.widgetScale = draftWidgetScale;
       if (String(draftShowOnStartup) !== String(settings.showOnStartup !== 'false')) patch.showOnStartup = String(draftShowOnStartup);
       if (String(draftMorning) !== String(settings.morningNotification !== 'false')) patch.morningNotification = String(draftMorning);
       if (Object.keys(patch).length > 0) await updateSettings(patch);
@@ -191,10 +201,12 @@ export function SettingsView() {
     setDraftCardT(settings.cardTransparency || '0');
     setDraftWidgetT(settings.widgetTransparency || '0');
     setDraftScale(settings.uiScale || '100');
+    setDraftWidgetScale(settings.widgetScale || '100');
     setDraftShowOnStartup(settings.showOnStartup !== 'false');
     setDraftMorning(settings.morningNotification !== 'false');
     setDraftAutoLaunch(persistedAutoLaunch);
     applyThemeToDom(theme as ThemeValue);
+    applyAccentColor(accentColor);
     setDirty(false);
     showToast('تغییرات لغو شد', 'info');
   };
@@ -350,6 +362,20 @@ export function SettingsView() {
                   </button>
                 ))}
               </div>
+              {!isNative && (
+                <>
+                  <h4 className="text-sm font-medium mb-2 mt-4">مقیاس ویجت دسکتاپ</h4>
+                  <div className="flex gap-2">
+                    {UI_SCALES.map(v => (
+                      <button key={v} onClick={() => { setDraftWidgetScale(String(v)); markDirty(); }}
+                        className={cn('flex-1 py-2 rounded-lg border text-sm transition-all',
+                          draftWidgetScale === String(v) ? 'border-primary bg-primary/10 text-foreground' : 'border-border bg-muted text-muted-foreground')}>
+                        {FA_SCALE[v]}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="p-4 rounded-xl border border-border/50 bg-card">

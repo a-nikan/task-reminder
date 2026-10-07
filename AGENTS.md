@@ -1,7 +1,8 @@
 # Nick Task Reminder — Agent Notes
 
 ## Git (user standing instruction)
-- After each release commit, always `git push origin main` with a 120000 ms timeout. If the push times out or fails, cancel it and defer to later — do not retry in a loop.
+- NEVER commit, push, or create a release without the user's explicit approval after THEY test the built artifacts. Workflow stops after local builds (APK + installer ready in `release/`); commit → push → release only when the user confirms.
+- When approved: always `git push origin main` with a 120000 ms timeout. If the push times out or fails, cancel it and defer to later — do not retry in a loop.
 - Never force-push; never commit secrets.
 
 ## Versioning (user standing instruction)
@@ -16,7 +17,7 @@ The assistant bumps the app version itself whenever a new build/release with cha
 - After bumping, rebuild both artifacts: Android APK + Windows installer.
 
 ## Release (user standing instruction)
-- After commit+push of a version, create a GitHub Release with tag `v<ver>` on main and attach both artifacts (binaries stay gitignored in `release/`):
+- After the user tests the artifacts and explicitly approves, commit, push, then create a GitHub Release with tag `v<ver>` on main and attach both artifacts (binaries stay gitignored in `release/`):
   `gh release create v<ver> --target main --title "Nick Task Reminder v<ver>" --notes "<short Persian notes>" "release\Nick Task Reminder Setup <ver>.exe" "release\Nick Task Reminder Android <ver>.apk"`
 - gh path: `C:\Program Files\GitHub CLI\gh.exe`. Auth: reuse the stored git credential per-command via `$env:GH_TOKEN` (from `git credential fill` for `https://github.com`) — never print or commit the token. gh web-login is NOT set up; do not run interactive `gh auth login`.
 

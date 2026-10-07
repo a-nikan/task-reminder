@@ -24,6 +24,20 @@ const WIDGET_MAX_H = 700;
 const WIDGET_DEF_W = 320;
 const WIDGET_DEF_H = 440;
 
+function dbScale(): number {
+  const s = parseInt(getDatabase().settings?.widgetScale || '100', 10);
+  return (isNaN(s) ? 100 : Math.min(200, Math.max(50, s))) / 100;
+}
+
+function scaledLimits(s: number): { minW: number; minH: number; maxW: number; maxH: number } {
+  return {
+    minW: Math.round(WIDGET_MIN_W * s),
+    minH: Math.round(WIDGET_MIN_H * s),
+    maxW: Math.round(WIDGET_MAX_W * s),
+    maxH: Math.round(WIDGET_MAX_H * s),
+  };
+}
+
 function readGeometries(): Record<string, WidgetGeom> {
   try {
     const raw = getDatabase().settings?.widgetGeometries;
@@ -38,11 +52,13 @@ function readGeometries(): Record<string, WidgetGeom> {
 function saveGeometry(taskId: string, win: BrowserWindow): void {
   try {
     if (win.isDestroyed()) return;
+    // Geometries are stored canonical (at 100% scale); scale is applied on open/resize
+    const s = dbScale();
     const geoms = readGeometries();
     const [x, y] = win.getPosition();
     const [w, h] = win.getSize();
     const prev = geoms[taskId] || {};
-    geoms[taskId] = { ...prev, x, y, w, h, onTop: win.isAlwaysOnTop() };
+    geoms[taskId] = { ...prev, x, y, w: Math.round(w / s), h: Math.round(h / s), onTop: win.isAlwaysOnTop() };
     const db = getDatabase();
     db.settings.widgetGeometries = JSON.stringify(geoms);
     saveDatabase();
@@ -70,9 +86,11 @@ export function openTaskWidget(taskId: string): { success: boolean; reason?: str
 
   const saved = readGeometries()[taskId] || {};
   const n = widgetWindows.size;
+  const s = dbScale();
+  const lim = scaledLimits(s);
   const { width: screenW } = screen.getPrimaryDisplay().workAreaSize;
-  const w = clamp(saved.w || WIDGET_DEF_W, WIDGET_MIN_W, WIDGET_MAX_W);
-  const h = clamp(saved.h || WIDGET_DEF_H, WIDGET_MIN_H, WIDGET_MAX_H);
+  const w = clamp(Math.round((saved.w || WIDGET_DEF_W) * s), lim.minW, lim.maxW);
+  const h = clamp(Math.round((saved.h || WIDGET_DEF_H) * s), lim.minH, lim.maxH);
   const fallbackX = clamp(screenW - w - 40, 0, Math.max(0, screenW - w));
   const x = saved.x ?? Math.min(fallbackX, 80 + n * 36);
   const y = saved.y ?? 80 + n * 36;
@@ -82,10 +100,10 @@ export function openTaskWidget(taskId: string): { success: boolean; reason?: str
     y,
     width: w,
     height: h,
-    minWidth: WIDGET_MIN_W,
-    minHeight: WIDGET_MIN_H,
-    maxWidth: WIDGET_MAX_W,
-    maxHeight: WIDGET_MAX_H,
+    minWidth: lim.minW,
+    minHeight: lim.minH,
+    maxWidth: lim.maxW,
+    maxHeight: lim.maxH,
     frame: false,
     transparent: true,
     skipTaskbar: true,
@@ -122,7 +140,15 @@ export function openTaskWidget(taskId: string): { success: boolean; reason?: str
   };
   win.on('moved', persist);
   win.on('resized', persist);
-  win.on('close', persist);
+  let resizeTimer: ReturnType<typeof setTimeout> | null = null;
+  win.on('resize', () => {
+    if (resizeTimer) clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(persist, 400);
+  });
+  win.on('close', () => {
+    if (resizeTimer) clearTimeout(resizeTimer);
+    persist();
+  });
   win.on('closed', () => {
     widgetWindows.delete(taskId);
     notifyMain();
@@ -197,6 +223,39 @@ export function setupWidgetIpc(): void {
         mainWindowRef.focus();
         mainWindowRef.webContents.send('open-task', { taskId });
       }
+      return { success: true };
+    } catch {
+      return { success: false };
+    }
+  });
+  ipcMain.handle('widget:editTask', (_event, taskId: string) => {
+    try {
+      if (mainWindowRef && !mainWindowRef.isDestroyed()) {
+        if (mainWindowRef.isMinimized()) mainWindowRef.restore();
+        mainWindowRef.show();
+        mainWindowRef.focus();
+        mainWindowRef.webContents.send('edit-task', { taskId });
+      }
+      return { success: true };
+    } catch {
+      return { success: false };
+    }
+  });
+  ipcMain.handle('widget:resize', (_event, taskId: string) => {
+    try {
+      const win = widgetWindows.get(taskId);
+      if (!win || win.isDestroyed()) return { success: false };
+      // Re-apply the saved canonical size at the current scale
+      const s = dbScale();
+      const lim = scaledLimits(s);
+      win.setMinimumSize(lim.minW, lim.minH);
+      win.setMaximumSize(lim.maxW, lim.maxH);
+      const g = readGeometries()[taskId] || {};
+      win.setSize(
+        clamp(Math.round((g.w || WIDGET_DEF_W) * s), lim.minW, lim.maxW),
+        clamp(Math.round((g.h || WIDGET_DEF_H) * s), lim.minH, lim.maxH)
+      );
+      saveGeometry(taskId, win);
       return { success: true };
     } catch {
       return { success: false };

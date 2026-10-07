@@ -672,6 +672,8 @@ export function createAndroidApi(): Window['electronAPI'] {
     widgetClose: async () => ({ success: false as const }),
     widgetSetOnTop: async () => ({ success: false as const }),
     showTaskInMain: async () => ({ success: false as const }),
+    editTaskInMain: async () => ({ success: false as const }),
+    widgetResize: async () => ({ success: false as const }),
     notifyWidgetChanged: async () => ({ success: true as const }),
     onTasksChanged: () => {},
 
@@ -684,6 +686,7 @@ export function createAndroidApi(): Window['electronAPI'] {
     onOpenTask: callback => {
       listeners.openTask.push(callback);
     },
+    onEditTask: () => {},
     onNavigateTo: callback => {
       listeners.navigateTo.push(callback);
     },

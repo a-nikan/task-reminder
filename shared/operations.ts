@@ -68,6 +68,7 @@ export function updateTask(db: DatabaseSchema, id: string, updates: any): Task |
   if (!task) return null;
 
   const now = nowIso();
+  const oldDate = task.date || null;
   const allowedFields = ['title', 'description', 'status', 'priority', 'date', 'time', 'reminder', 'reminder_offset', 'category_id', 'color', 'pinned', 'text_dir', 'tags', 'subtasks', 'linked_id', 'recurrence', 'recurrence_parent', 'order_index', 'archived', 'favorite'];
 
   for (const [key, value] of Object.entries(updates)) {
@@ -78,6 +79,11 @@ export function updateTask(db: DatabaseSchema, id: string, updates: any): Task |
         (task as any)[key] = value;
       }
     }
+  }
+
+  // Moving a task to another date = fresh start: uncheck everything
+  if ('date' in updates && ((updates as any).date || null) !== oldDate) {
+    resetTaskForNewDate(task);
   }
 
   if (updates.status === 'done') {
@@ -138,10 +144,19 @@ export function restoreTask(db: DatabaseSchema, id: string): Task | null {
 export function moveTaskToDate(db: DatabaseSchema, id: string, date: string | null): Task | null {
   const task = db.tasks.find(t => t.id === id);
   if (task) {
+    // Moving a task to another date = fresh start: uncheck everything
+    if ((task.date || null) !== (date || null)) resetTaskForNewDate(task);
     task.date = date;
     task.updated_at = nowIso();
   }
   return task || null;
+}
+
+function resetTaskForNewDate(task: Task): void {
+  task.status = 'todo';
+  task.completed_at = null;
+  (task.subtasks || []).forEach(s => { s.completed = false; });
+  task.updated_at = nowIso();
 }
 
 export function changeTaskStatus(db: DatabaseSchema, id: string, status: string): Task | null {

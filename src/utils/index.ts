@@ -307,8 +307,23 @@ export const SNOOZE_OPTIONS = [
   { value: 1440, label: 'فردا' },
 ];
 
-export const TRANSPARENCY_STEPS = [0, 20, 40, 60, 80];
-export const CARD_TRANSPARENCY_KEY = 'cardTransparency';
+export const ACCENT_CSS: Record<string, string> = {
+  purple: '262 83% 58%',
+  blue: '217 91% 60%',
+  teal: '174 80% 40%',
+  pink: '330 81% 60%',
+  orange: '25 95% 53%',
+};
+
+export function applyAccentColor(value: string | undefined): void {
+  if (typeof document === 'undefined') return;
+  const css = ACCENT_CSS[value || ''] || ACCENT_CSS.purple;
+  const r = document.documentElement.style;
+  r.setProperty('--primary', css);
+  r.setProperty('--accent', css);
+}
+
+export const TRANSPARENCY_STEPS = [0, 20, 40, 60, 80];export const CARD_TRANSPARENCY_KEY = 'cardTransparency';
 export const WIDGET_TRANSPARENCY_KEY = 'widgetTransparency';
 
 export function getTransparency(settings: Record<string, string> | undefined, key: string, fallback: number): number {

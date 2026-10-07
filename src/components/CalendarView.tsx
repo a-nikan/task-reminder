@@ -39,8 +39,9 @@ export function CalendarView() {
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
 
-  // Jalali cursor derived from gregorian cursor
-  const jyjm = toJalaali(year, month + 1, 1);
+  // Jalali cursor derived from the cursor's actual day (not the 1st),
+  // otherwise month navigation sticks or skips months
+  const jyjm = toJalaali(year, month + 1, currentDate.getDate());
   const jy = jyjm.jy;
   const jm = jyjm.jm;
 
