@@ -110,6 +110,7 @@ export function TodayView() {
     onToggleFavorite: handleToggleFavorite,
     onDelete: handleDelete,
     onReminderChanged: loadReminders,
+    onTasksChanged: reload,
     onSwapCards: async (aId: string, bId: string) => {
       const a = tasks.find(t => t.id === aId);
       const b = tasks.find(t => t.id === bId);
@@ -192,7 +193,7 @@ export function TodayView() {
   );
 }
 
-function TaskSection({ title, status, tasks, onStatusChange, onToggleFavorite, onDelete, selectionMode, selectedIds, onToggleSelect, remindersMap, onReminderChanged, onSwapCards }: {
+function TaskSection({ title, status, tasks, onStatusChange, onToggleFavorite, onDelete, selectionMode, selectedIds, onToggleSelect, remindersMap, onReminderChanged, onTasksChanged, onSwapCards }: {
   title: string;
   status: TaskStatus;
   tasks: Task[];
@@ -204,6 +205,7 @@ function TaskSection({ title, status, tasks, onStatusChange, onToggleFavorite, o
   onToggleSelect: (t: Task) => void;
   remindersMap: Record<string, string>;
   onReminderChanged: () => void;
+  onTasksChanged: () => Promise<void>;
   onSwapCards: (aId: string, bId: string) => Promise<void>;
 }) {
   const { gridRef, animateSwap } = useCardSwap();
@@ -229,6 +231,7 @@ function TaskSection({ title, status, tasks, onStatusChange, onToggleFavorite, o
             onToggleSelect={onToggleSelect}
             reminderAt={remindersMap[task.id] ?? (task as any).reminder ?? null}
             onReminderChanged={onReminderChanged}
+            onTasksChanged={onTasksChanged}
             swapGroupId={swapGroupId}
             onSwapCards={handleSwap}
           />

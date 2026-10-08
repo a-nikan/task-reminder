@@ -117,6 +117,7 @@ export function AnytimeView() {
                 onToggleSelect={(t) => toggleSelect(t.id)}
                 reminderAt={remindersMap[task.id] ?? (task as any).reminder ?? null}
                 onReminderChanged={loadReminders}
+                onTasksChanged={reload}
                 swapGroupId="anytime"
                 onSwapCards={handleSwap}
               />

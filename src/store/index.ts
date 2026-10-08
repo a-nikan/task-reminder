@@ -348,7 +348,18 @@ export const useStore = create<AppState>((set, get) => ({
   refreshCurrentView: async () => {
     const state = get();
     switch (state.view) {
-      case 'today': await state.loadTodayTasks(); break;
+      case 'today': {
+        // Stay on the viewed day (calendar navigation) instead of jumping to today
+        const sel = state.selectedDate;
+        const todayStr = new Date().toISOString().split('T')[0];
+        if (sel && sel !== todayStr) {
+          const dayTasks = await window.electronAPI.getTasksByDate(sel);
+          set({ tasks: dayTasks });
+        } else {
+          await state.loadTodayTasks();
+        }
+        break;
+      }
       case 'all': await state.loadTasks({ archived: false }); break;
       case 'anytime': await state.loadAnytimeTasks(); break;
       case 'overdue': await state.loadOverdueTasks(); break;

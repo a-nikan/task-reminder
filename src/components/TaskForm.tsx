@@ -158,7 +158,7 @@ export function TaskForm({ initial, submitLabel, onSubmit, onCancel, autoSave, o
         {subtasks.length > 0 && (
           <div className="space-y-1 mb-2">
             {subtasks.map(st => (
-              <div key={st.id} className="flex items-center gap-2 py-1 px-2 rounded-lg bg-muted/50">
+              <div key={st.id} className="flex items-start gap-2 py-1 px-2 rounded-lg bg-muted/50">
                 {st.completed
                   ? <Check className="w-3 h-3 text-status-done" />
                   : <Check className="w-3 h-3 text-muted-foreground/50" />}

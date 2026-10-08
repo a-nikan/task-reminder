@@ -5,6 +5,8 @@ import type { Task, TaskStatus, Subtask } from '../types';
 import { X, Check, Clock, Folder, Bell, Trash2, Archive, Star, Edit2, Link, Copy, Plus, CheckSquare, Tag, Repeat, Pin, PinOff, AlignLeft, AlignRight } from 'lucide-react';
 import { DateInput } from './DateInput';
 import { ColorSwatches } from './ColorSwatches';
+import { SubtaskRow } from './SubtaskRow';
+import { useCardSwap } from '../hooks/useCardSwap';
 import { followReminderAfterMove, armReminderIfFuture } from './TaskForm';
 
 export function TaskDetailPanel() {
@@ -166,6 +168,23 @@ export function TaskDetailPanel() {
     }
     reloadAll();
   };
+
+  // Subtask swap drag & drop within this task
+  const { gridRef: subGridRef, animateSwap: animateSubSwap } = useCardSwap();
+  const handleSubSwap = (aId: string, bId: string) => animateSubSwap(async () => {
+    const arr = [...subtasks];
+    const ia = arr.findIndex(s => s.id === aId);
+    const ib = arr.findIndex(s => s.id === bId);
+    if (ia < 0 || ib < 0) return;
+    [arr[ia], arr[ib]] = [arr[ib], arr[ia]];
+    const updated = await window.electronAPI.updateTask(task.id, { subtasks: arr });
+    if (updated) {
+      setTask(updated);
+      setSelectedTask(updated);
+      setSubtasks(updated.subtasks || []);
+    }
+    reloadAll();
+  });
 
   const handleCopyLinked = async () => {
     if (!copyDate) return;
@@ -406,28 +425,18 @@ export function TaskDetailPanel() {
             </div>
           )}
 
-          <div className="space-y-1">
+          <div ref={subGridRef} data-swap-group={`sub-${task.id}`} className="space-y-1">
             {subtasks.map(subtask => (
-              <div key={subtask.id} className="group flex items-center gap-2 py-1 px-2 rounded-lg hover:bg-muted/50 transition-colors">
-                <button
-                  onClick={() => handleToggleSubtask(subtask.id)}
-                  className={cn(
-                    'w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-all',
-                    subtask.completed ? 'bg-status-done border-status-done text-white' : 'border-muted-foreground/30 hover:border-status-done'
-                  )}
-                >
-                  {subtask.completed && <Check className="w-2.5 h-2.5" />}
-                </button>
-                <span className={cn('flex-1 text-sm', subtask.completed && 'line-through text-muted-foreground')}>
-                  {subtask.title}
-                </span>
-                <button
-                  onClick={() => handleDeleteSubtask(subtask.id)}
-                  className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-destructive/10 transition-all"
-                >
-                  <X className="w-3 h-3 text-muted-foreground hover:text-destructive" />
-                </button>
-              </div>
+              <SubtaskRow
+                key={subtask.id}
+                subtask={subtask}
+                groupId={`sub-${task.id}`}
+                titleClassName="text-sm"
+                completedClassName="line-through text-muted-foreground"
+                onToggle={handleToggleSubtask}
+                onRemove={handleDeleteSubtask}
+                onDrop={handleSubSwap}
+              />
             ))}
           </div>
 

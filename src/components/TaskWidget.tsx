@@ -11,7 +11,9 @@ import {
   WIDGET_TRANSPARENCY_KEY,
 } from '../utils';
 import type { Task, TaskStatus, Subtask } from '../types';
-import { Check, Clock, X, Pin, PinOff, AlignLeft, AlignRight, Plus, Trash2, Edit2 } from 'lucide-react';
+import { SubtaskRow } from './SubtaskRow';
+import { useCardSwap } from '../hooks/useCardSwap';
+import { Check, Clock, X, Pin, PinOff, AlignLeft, AlignRight, Plus, Edit2 } from 'lucide-react';
 
 function readWidgetOnTop(settings: Record<string, string> | undefined, taskId: string): boolean {
   try {
@@ -118,6 +120,20 @@ export function TaskWidget({ taskId }: { taskId: string }) {
     await load();
     refreshCurrentView();
   };
+
+  // Subtask swap drag & drop within this widget
+  const { gridRef: wsubGridRef, animateSwap: animateWsubSwap } = useCardSwap();
+  const handleWsubSwap = (aId: string, bId: string) => animateWsubSwap(async () => {
+    const arr = [...(task.subtasks || [])];
+    const ia = arr.findIndex(s => s.id === aId);
+    const ib = arr.findIndex(s => s.id === bId);
+    if (ia < 0 || ib < 0) return;
+    [arr[ia], arr[ib]] = [arr[ib], arr[ia]];
+    await window.electronAPI.updateTask(task.id, { subtasks: arr });
+    await window.electronAPI.notifyWidgetChanged(task.id);
+    await load();
+    refreshCurrentView();
+  });
 
   const handleSnooze = async (minutes: number) => {
     await window.electronAPI.snoozeReminder(task.id, minutes);
@@ -233,29 +249,20 @@ export function TaskWidget({ taskId }: { taskId: string }) {
           {(task.subtasks || []).length > 0 && (
             <div className="space-y-1 mb-1.5">
               <div className="text-[10px] opacity-70">سابتسک‌ها ({subtaskDone}/{(task.subtasks || []).length})</div>
-              {(task.subtasks || []).map((st: Subtask) => (
-                <div key={st.id} className="flex items-center gap-2 py-0.5 group/wsub">
-                  <button onClick={() => handleToggleSubtask(st.id)} className="shrink-0 no-drag">
-                    <div
-                      className="w-4 h-4 rounded border flex items-center justify-center transition-all"
-                      style={{
-                        borderColor: st.completed ? undefined : `${onColor}55`,
-                        backgroundColor: st.completed ? onColor : 'transparent',
-                        color: st.completed ? accent : undefined,
-                      }}
-                    >
-                      {st.completed && <Check className="w-2.5 h-2.5" />}
-                    </div>
-                  </button>
-                  <span className={cn('text-xs flex-1 break-words', st.completed && 'line-through opacity-60')}>
-                    {st.title}
-                  </span>
-                  <button onClick={() => handleRemoveSubtask(st.id)} title="حذف سابتسک"
-                    className="no-drag shrink-0 p-0.5 rounded opacity-40 hover:opacity-100 transition-opacity">
-                    <Trash2 className="w-3 h-3" style={{ color: onColor }} />
-                  </button>
-                </div>
-              ))}
+              <div ref={wsubGridRef} data-swap-group={`wsub-${task.id}`} className="space-y-1">
+                {(task.subtasks || []).map((st: Subtask) => (
+                  <SubtaskRow
+                    key={st.id}
+                    subtask={st}
+                    groupId={`wsub-${task.id}`}
+                    accent={accent}
+                    onColor={onColor}
+                    onToggle={handleToggleSubtask}
+                    onRemove={handleRemoveSubtask}
+                    onDrop={handleWsubSwap}
+                  />
+                ))}
+              </div>
               <div className="flex items-center gap-1.5 mt-1 no-drag">
                 <input
                   value={newSubtaskTitle}

@@ -1,10 +1,12 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useStore } from '../store';
 import { cn, getToday, getTomorrow, formatTaskDateLocalized, formatReminderLocalized, fallbackAccent, pickOnColor, cardGradient, getTransparency, CARD_TRANSPARENCY_KEY } from '../utils';
 import type { Task, TaskStatus, Subtask } from '../types';
 import { Check, Clock, Star, ChevronDown, ChevronUp, Edit2, Copy, CheckSquare, Plus, Trash2, X, Calendar, Bell, BellOff, Pin, PinOff, GripVertical, AlignLeft, AlignRight } from 'lucide-react';
 import { DateInput } from './DateInput';
 import { ColorSwatches } from './ColorSwatches';
+import { useSwapDrag, useCardSwap } from '../hooks/useCardSwap';
+import { SubtaskRow } from './SubtaskRow';
 import { followReminderAfterMove, armReminderIfFuture } from './TaskForm';
 
 interface TaskCardProps {
@@ -24,6 +26,7 @@ interface TaskCardProps {
   onReminderChanged?: () => void;
   swapGroupId?: string | null;
   onSwapCards?: (aId: string, bId: string) => Promise<void>;
+  onTasksChanged?: () => Promise<void>;
 }
 
 export function formatReminderFa(iso: string | null | undefined): string {
@@ -67,9 +70,16 @@ export function TaskCard({
   onReminderChanged,
   swapGroupId,
   onSwapCards,
+  onTasksChanged,
 }: TaskCardProps) {
   const { refreshCurrentView, showToast, setSelectedTask, setShowTaskDetail, settings, setEditingTask, setShowEditTaskForm } = useStore();
-  const [expanded, setExpanded] = useState(false);
+
+  // Reload through the owning view when provided (keeps day/category views
+  // intact); otherwise fall back to the global refresh
+  const reloadAllTasks = async () => {
+    if (onTasksChanged) await onTasksChanged();
+    else await refreshCurrentView();
+  };  const [expanded, setExpanded] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [newDate, setNewDate] = useState('');
   const [showCopyModal, setShowCopyModal] = useState(false);
@@ -127,7 +137,7 @@ export function TaskCard({
     setShowReminderModal(false);
     if (res?.success === false) return;
     showToast('یادآوری با موفقیت ثبت شد');
-    refreshCurrentView();
+    reloadAllTasks();
     onReminderChanged?.();
   };
 
@@ -135,7 +145,7 @@ export function TaskCard({
     await window.electronAPI.cancelReminder(task.id);
     setShowReminderModal(false);
     showToast('هشدار لغو شد', 'info');
-    refreshCurrentView();
+    reloadAllTasks();
     onReminderChanged?.();
   };
 
@@ -143,7 +153,7 @@ export function TaskCard({
     await window.electronAPI.snoozeReminder(task.id, minutes);
     const labels: Record<number, string> = { 5: '۵', 10: '۱۰', 30: '۳۰' };
     showToast(`⏳ ${labels[minutes] || minutes} دقیقه بعد دوباره یادآوری می‌شود`, 'info');
-    refreshCurrentView();
+    reloadAllTasks();
     onReminderChanged?.();
   };
 
@@ -153,7 +163,7 @@ export function TaskCard({
     if (pinned) await window.electronAPI.widgetOpen(task.id);
     else await window.electronAPI.widgetClose(task.id);
     showToast(pinned ? 'ویجت دسکتاپ باز شد' : 'ویجت دسکتاپ بسته شد', 'info');
-    refreshCurrentView();
+    reloadAllTasks();
     onReminderChanged?.();
   };
 
@@ -161,73 +171,40 @@ export function TaskCard({
 
   const handleToggleDir = async () => {
     await window.electronAPI.updateTask(task.id, { text_dir: isLtrCard ? null : 'ltr' });
-    refreshCurrentView();
+    reloadAllTasks();
     onReminderChanged?.();
   };
 
   // Swap drag & drop (exchange places with another card in the same group)
-  const cardRef = useRef<HTMLDivElement>(null);
-  const [dragging, setDragging] = useState(false);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const dragInfo = useRef<{ startX: number; startY: number; active: boolean } | null>(null);
+  const { dragging, dragOffset, dragHandleProps } = useSwapDrag({
+    groupId: swapGroupId,
+    itemId: task.id,
+    disabled: selectionMode,
+    onDrop: async (aId, bId) => { await onSwapCards?.(aId, bId); },
+  });
 
-  const clearSwapTarget = () => {
-    document.querySelectorAll('.swap-target').forEach(el => el.classList.remove('swap-target'));
-  };
-
-  const handleSwapPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
-    if (selectionMode || !onSwapCards || !swapGroupId) return;
-    e.stopPropagation();
-    e.preventDefault();
-    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ignore */ }
-    dragInfo.current = { startX: e.clientX, startY: e.clientY, active: false };
-  };
-
-  const handleSwapPointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
-    const info = dragInfo.current;
-    if (!info) return;
-    const dx = e.clientX - info.startX;
-    const dy = e.clientY - info.startY;
-    if (!info.active) {
-      if (Math.hypot(dx, dy) < 7) return;
-      info.active = true;
-      setDragging(true);
-    }
-    setDragOffset({ x: dx, y: dy });
-    clearSwapTarget();
-    const under = document.elementFromPoint(e.clientX, e.clientY);
-    const cardEl = under?.closest?.('[data-swap-id]') as HTMLElement | null;
-    const groupEl = under?.closest?.('[data-swap-group]') as HTMLElement | null;
-    if (cardEl && groupEl && groupEl.getAttribute('data-swap-group') === swapGroupId) {
-      const targetId = cardEl.getAttribute('data-swap-id');
-      if (targetId && targetId !== task.id) cardEl.classList.add('swap-target');
-    }
-  };
-
-  const handleSwapEnd = (allowDrop: boolean) => {
-    const info = dragInfo.current;
-    dragInfo.current = null;
-    if (!info) return;
-    const target = document.querySelector('.swap-target') as HTMLElement | null;
-    const targetId = target?.getAttribute('data-swap-id');
-    clearSwapTarget();
-    setDragging(false);
-    setDragOffset({ x: 0, y: 0 });
-    if (allowDrop && info.active && targetId && targetId !== task.id && onSwapCards) {
-      void onSwapCards(task.id, targetId);
-    }
-  };
+  // Subtask swap drag & drop within this card
+  const { gridRef: subGridRef, animateSwap: animateSubSwap } = useCardSwap();
+  const handleSubSwap = (aId: string, bId: string) => animateSubSwap(async () => {
+    const arr = [...(task.subtasks || [])];
+    const ia = arr.findIndex(s => s.id === aId);
+    const ib = arr.findIndex(s => s.id === bId);
+    if (ia < 0 || ib < 0) return;
+    [arr[ia], arr[ib]] = [arr[ib], arr[ia]];
+    await window.electronAPI.updateTask(task.id, { subtasks: arr });
+    await reloadAllTasks();
+  });
 
   const handleToggleSubtask = async (subtaskId: string) => {
     if (task.linked_id) {
       await window.electronAPI.toggleSubtask(task.id, subtaskId);
-      refreshCurrentView();
+      reloadAllTasks();
     } else {
       const updated = (task.subtasks || []).map((st: Subtask) =>
         st.id === subtaskId ? { ...st, completed: !st.completed } : st
       );
       await window.electronAPI.updateTask(task.id, { subtasks: updated });
-      refreshCurrentView();
+      reloadAllTasks();
     }
   };
 
@@ -236,18 +213,18 @@ export function TaskCard({
     await window.electronAPI.addSubtask(task.id, newSubtaskTitle.trim());
     setNewSubtaskTitle('');
     setShowAddSubtask(false);
-    refreshCurrentView();
+    reloadAllTasks();
   };
 
   const handleRemoveSubtask = async (subtaskId: string) => {
     await window.electronAPI.removeSubtask(task.id, subtaskId);
-    refreshCurrentView();
+    reloadAllTasks();
   };
 
   const handlePickColor = async (color: string) => {
     await window.electronAPI.updateTask(task.id, { color: color || null });
     setShowColorPicker(false);
-    refreshCurrentView();
+    reloadAllTasks();
     showToast('رنگ کارت تنظیم شد');
   };
 
@@ -255,7 +232,7 @@ export function TaskCard({
     await window.electronAPI.moveTaskToDate(task.id, date);
     await followReminderAfterMove(task, date);
     setShowDatePicker(false);
-    refreshCurrentView();
+    reloadAllTasks();
     showToast(date ? 'تاریخ تعیین شد' : 'تاریخ حذف شد');
   };
 
@@ -270,7 +247,7 @@ export function TaskCard({
     }
     setShowCopyModal(false);
     setCopyDate('');
-    refreshCurrentView();
+    reloadAllTasks();
     showToast('تسک لینک‌شده کپی شد');
   };
 
@@ -295,7 +272,6 @@ export function TaskCard({
 
   return (
     <div
-      ref={cardRef}
       data-swap-id={swapGroupId ? task.id : undefined}
       dir={isLtrCard ? 'ltr' : undefined}
       style={dragging ? { transform: `translate(${dragOffset.x}px, ${dragOffset.y}px)` } : undefined}
@@ -408,12 +384,7 @@ export function TaskCard({
           )}
           {onSwapCards && swapGroupId && !selectionMode && (
             <button
-              onPointerDown={handleSwapPointerDown}
-              onPointerMove={handleSwapPointerMove}
-              onPointerUp={() => handleSwapEnd(true)}
-              onPointerCancel={() => handleSwapEnd(false)}
-              onClick={(e) => e.stopPropagation()}
-              onContextMenu={(e) => e.preventDefault()}
+              {...dragHandleProps}
               title="جابه‌جایی (درگ)"
               className="touch-none select-none cursor-grab active:cursor-grabbing opacity-60 p-1 rounded hover:bg-muted transition-all [@media(hover:hover)]:opacity-0 group-hover:opacity-100"
             >
@@ -443,23 +414,16 @@ export function TaskCard({
               <div className="h-1.5 bg-muted rounded-full overflow-hidden mb-2">
                 <div className="h-full bg-status-done rounded-full transition-all duration-300" style={{ width: `${subtaskProgress}%` }} />
               </div>
-              <div className="space-y-1">
+              <div ref={subGridRef} data-swap-group={`sub-${task.id}`} className="space-y-1">
                 {task.subtasks.map((subtask: Subtask) => (
-                  <div key={subtask.id} className="flex items-center gap-2 py-1 px-2 rounded-lg hover:bg-muted/50 transition-colors group/sub">
-                    <button onClick={(e) => { e.stopPropagation(); handleToggleSubtask(subtask.id); }} className="shrink-0">
-                      <div className={cn('w-4 h-4 rounded border flex items-center justify-center transition-all',
-                        subtask.completed ? 'bg-status-done border-status-done text-white' : 'border-muted-foreground/30 hover:border-status-done')}>
-                        {subtask.completed && <Check className="w-2.5 h-2.5" />}
-                      </div>
-                    </button>
-                    <span className={cn('text-xs flex-1', subtask.completed && 'line-through opacity-60')}>
-                      {subtask.title}
-                    </span>
-                    <button onClick={(e) => { e.stopPropagation(); handleRemoveSubtask(subtask.id); }}
-                      className="opacity-0 group-hover/sub:opacity-100 p-0.5 rounded hover:bg-destructive/10 transition-all">
-                      <Trash2 className="w-3 h-3 text-destructive" />
-                    </button>
-                  </div>
+                  <SubtaskRow
+                    key={subtask.id}
+                    subtask={subtask}
+                    groupId={`sub-${task.id}`}
+                    onToggle={handleToggleSubtask}
+                    onRemove={handleRemoveSubtask}
+                    onDrop={handleSubSwap}
+                  />
                 ))}
               </div>
             </div>
