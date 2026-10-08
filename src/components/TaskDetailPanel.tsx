@@ -21,6 +21,8 @@ export function TaskDetailPanel() {
   const [reminderDate, setReminderDate] = useState('');
   const [reminderTime, setReminderTime] = useState('');
   const [showReminderEditor, setShowReminderEditor] = useState(false);
+  // Subtask swap hook must sit above the early return below
+  const { gridRef: subGridRef, animateSwap: animateSubSwap } = useCardSwap();
 
   useEffect(() => {
     if (selectedTask) {
@@ -170,7 +172,6 @@ export function TaskDetailPanel() {
   };
 
   // Subtask swap drag & drop within this task
-  const { gridRef: subGridRef, animateSwap: animateSubSwap } = useCardSwap();
   const handleSubSwap = (aId: string, bId: string) => animateSubSwap(async () => {
     const arr = [...subtasks];
     const ia = arr.findIndex(s => s.id === aId);

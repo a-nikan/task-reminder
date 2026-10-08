@@ -78,6 +78,9 @@ export function TaskWidget({ taskId }: { taskId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [widgetScale]);
 
+  // Subtask swap (hook must sit above the early return below)
+  const { gridRef: wsubGridRef, animateSwap: animateWsubSwap } = useCardSwap();
+
   if (!task) return null;
 
   const accent = (task as any).color || fallbackAccent(task.id);
@@ -122,7 +125,6 @@ export function TaskWidget({ taskId }: { taskId: string }) {
   };
 
   // Subtask swap drag & drop within this widget
-  const { gridRef: wsubGridRef, animateSwap: animateWsubSwap } = useCardSwap();
   const handleWsubSwap = (aId: string, bId: string) => animateWsubSwap(async () => {
     const arr = [...(task.subtasks || [])];
     const ia = arr.findIndex(s => s.id === aId);

@@ -297,6 +297,8 @@ export const useStore = create<AppState>((set, get) => ({
 
   toast: null,
   showToast: (message, type = 'success', undoable = false) => {
+    // User preference: only error toasts (incl. delete confirmations with undo)
+    if (type !== 'error') return;
     const t = { message, type, undoable };
     set({ toast: t });
     setTimeout(() => {
