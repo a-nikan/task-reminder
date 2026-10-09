@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useStore } from '../store';
-import { cn, getToday, getTomorrow, formatTaskDateLocalized, formatReminderLocalized, fallbackAccent, pickOnColor, cardGradient, getTransparency, CARD_TRANSPARENCY_KEY } from '../utils';
+import { cn, getToday, getTomorrow, formatTaskDateLocalized, formatReminderLocalized, fallbackAccent, pickOnColor, cardGradient, getTransparency, CARD_TRANSPARENCY_KEY, CARD_TEXT, CARD_TEXT_SHADOW, shadeColor } from '../utils';
 import type { Task, TaskStatus, Subtask } from '../types';
 import { Check, Clock, Star, ChevronDown, ChevronUp, Edit2, Copy, CheckSquare, Plus, Trash2, X, Calendar, Bell, BellOff, Pin, PinOff, GripVertical, AlignLeft, AlignRight } from 'lucide-react';
 import { DateInput } from './DateInput';
@@ -25,7 +25,10 @@ interface TaskCardProps {
   reminderAt?: string | null;
   onReminderChanged?: () => void;
   swapGroupId?: string | null;
-  onSwapCards?: (aId: string, bId: string) => Promise<void>;
+  onDropTask?: (draggedId: string) => Promise<void>;
+  onDragMove?: (clientX: number, clientY: number, draggedId: string) => void;
+  onDragEnd?: () => void;
+  onLongPressSelect?: (t: Task) => void;
   onTasksChanged?: () => Promise<void>;
 }
 
@@ -68,9 +71,12 @@ export function TaskCard({
   onToggleSelect,
   reminderAt,
   onReminderChanged,
-  swapGroupId,
-  onSwapCards,
   onTasksChanged,
+  swapGroupId,
+  onDropTask,
+  onDragMove,
+  onDragEnd,
+  onLongPressSelect,
 }: TaskCardProps) {
   const { refreshCurrentView, showToast, setSelectedTask, setShowTaskDetail, settings, setEditingTask, setShowEditTaskForm } = useStore();
 
@@ -84,6 +90,7 @@ export function TaskCard({
   const [newDate, setNewDate] = useState('');
   const [showCopyModal, setShowCopyModal] = useState(false);
   const [copyDate, setCopyDate] = useState('');
+  const [copyLink, setCopyLink] = useState(true);
   const [showReminderModal, setShowReminderModal] = useState(false);
   const [reminderDate, setReminderDate] = useState('');
   const [reminderTime, setReminderTime] = useState('');
@@ -175,24 +182,59 @@ export function TaskCard({
     onReminderChanged?.();
   };
 
-  // Swap drag & drop (exchange places with another card in the same group)
+  // Long-press (touch only) enters selection mode with this card selected
+  const longPressTimer = useRef<number | null>(null);
+  const longPressStart = useRef({ x: 0, y: 0 });
+  const clearLongPress = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+  const onHeaderPointerDown = (e: React.PointerEvent) => {
+    if (selectionMode || !onLongPressSelect || e.pointerType !== 'touch') return;
+    if ((e.target as HTMLElement).closest('button')) return;
+    longPressStart.current = { x: e.clientX, y: e.clientY };
+    clearLongPress();
+    longPressTimer.current = window.setTimeout(() => {
+      longPressTimer.current = null;
+      try { (navigator as any).vibrate?.(25); } catch { /* ignore */ }
+      onLongPressSelect(task);
+    }, 500);
+  };
+  const onHeaderPointerMove = (e: React.PointerEvent) => {
+    if (!longPressTimer.current) return;
+    const dx = e.clientX - longPressStart.current.x;
+    const dy = e.clientY - longPressStart.current.y;
+    if (Math.hypot(dx, dy) > 10) clearLongPress();
+  };
+
+  // Insertion drag & drop (drop line shows where the card will land)
   const { dragging, dragOffset, dragHandleProps } = useSwapDrag({
     groupId: swapGroupId,
     itemId: task.id,
     disabled: selectionMode,
-    onDrop: async (aId, bId) => { await onSwapCards?.(aId, bId); },
+    onDrop: (draggedId) => { void onDropTask?.(draggedId); },
+    onDragMove: (x, y, id) => onDragMove?.(x, y, id),
+    onDragEnd: () => onDragEnd?.(),
   });
 
-  // Subtask swap drag & drop within this card
-  const { gridRef: subGridRef, animateSwap: animateSubSwap } = useCardSwap();
-  const handleSubSwap = (aId: string, bId: string) => animateSubSwap(async () => {
+  // Subtask insertion drag & drop within this card
+  const { gridRef: subGridRef, indicatorRef: subIndicatorRef, dropTargetRef: subDropTargetRef, animateSwap: animateSubSwap, updateDropTarget: updateSubDropTarget, clearDropIndicator: clearSubDropIndicator } = useCardSwap();
+  const handleSubDrop = (draggedId: string) => animateSubSwap(async () => {
+    const t = subDropTargetRef.current;
+    if (!t) return;
     const arr = [...(task.subtasks || [])];
-    const ia = arr.findIndex(s => s.id === aId);
-    const ib = arr.findIndex(s => s.id === bId);
-    if (ia < 0 || ib < 0) return;
-    [arr[ia], arr[ib]] = [arr[ib], arr[ia]];
+    const from = arr.findIndex(s => s.id === draggedId);
+    let to = arr.findIndex(s => s.id === t.targetId);
+    if (from < 0 || to < 0) return;
+    const [moved] = arr.splice(from, 1);
+    to = arr.findIndex(s => s.id === t.targetId);
+    if (!t.before) to += 1;
+    arr.splice(to, 0, moved);
     await window.electronAPI.updateTask(task.id, { subtasks: arr });
     await reloadAllTasks();
+    clearSubDropIndicator();
   });
 
   const handleToggleSubtask = async (subtaskId: string) => {
@@ -221,6 +263,12 @@ export function TaskCard({
     reloadAllTasks();
   };
 
+  const handleRenameSubtask = async (subtaskId: string, title: string) => {
+    const next = (task.subtasks || []).map(st => st.id === subtaskId ? { ...st, title } : st);
+    await window.electronAPI.updateTask(task.id, { subtasks: next });
+    reloadAllTasks();
+  };
+
   const handlePickColor = async (color: string) => {
     await window.electronAPI.updateTask(task.id, { color: color || null });
     setShowColorPicker(false);
@@ -241,16 +289,38 @@ export function TaskCard({
       showToast('تاریخ مقصد را انتخاب کنید', 'error');
       return;
     }
-    const created: any = await window.electronAPI.copyLinkedTask(task.id, copyDate);
-    if (created?.id) {
-      await armReminderIfFuture(created.id, created.date, created.time, created.reminder_offset || 0);
+    if (copyLink) {
+      const created: any = await window.electronAPI.copyLinkedTask(task.id, copyDate);
+      if (created?.id) {
+        await armReminderIfFuture(created.id, created.date, created.time, created.reminder_offset || 0);
+      }
+      showToast('تسک لینک‌شده کپی شد');
+    } else {
+      const created: any = await window.electronAPI.createTask({
+        title: task.title,
+        description: task.description || '',
+        date: copyDate,
+        time: task.time || null,
+        priority: task.priority,
+        category_id: (task as any).category_id || null,
+        color: (task as any).color || null,
+        tags: task.tags || [],
+        subtasks: (task.subtasks || []).map(st => ({ ...st, completed: false })),
+        recurrence: null,
+        reminder_offset: task.reminder_offset || 0,
+        status: 'todo',
+      });
+      if (created?.id) {
+        await armReminderIfFuture(created.id, created.date, created.time, created.reminder_offset || 0);
+      }
+      showToast('تسک کپی شد');
     }
     setShowCopyModal(false);
     setCopyDate('');
     reloadAllTasks();
-    showToast('تسک لینک‌شده کپی شد');
   };
 
+  const taskSubs = [...(task.subtasks || [])].sort((a, b) => Number(!!a.completed) - Number(!!b.completed));
   const subtaskProgress = task.subtasks && task.subtasks.length > 0
     ? Math.round((task.subtasks.filter((s: Subtask) => s.completed).length / task.subtasks.length) * 100)
     : 0;
@@ -282,17 +352,18 @@ export function TaskCard({
       className={cn(
         'relative rounded-t-2xl bg-card transition-all duration-200 group flex flex-col min-h-[150px]',
         hasStrip ? 'rounded-b-none' : 'rounded-b-2xl',
-        'shadow-[0_2px_10px_-5px_rgba(0,0,0,0.18)]',
+        'shadow-[0_8px_24px_-8px_rgba(0,0,0,0.4)] dark:shadow-[0_8px_28px_-6px_rgba(0,0,0,0.65)]',
         borderColor,
         task.status === 'done' && 'opacity-60',
         expanded && !selectionMode && 'ring-1 ring-primary/30',
         selected && 'ring-2 ring-primary',
         !expanded && !selectionMode &&
-          'hover:shadow-[0_10px_24px_-8px_rgba(0,0,0,0.28)]'
+          'hover:shadow-[0_14px_32px_-8px_rgba(0,0,0,0.45)] dark:hover:shadow-[0_14px_36px_-8px_rgba(0,0,0,0.75)]'
       )}
       style={{
         background: cardGradient(accent, cardT),
-        color: onColor,
+        color: CARD_TEXT,
+        textShadow: CARD_TEXT_SHADOW,
       }}
     >
       {effectiveReminder && (
@@ -311,8 +382,13 @@ export function TaskCard({
         </span>
       )}
       <div
-        className={cn('flex items-stretch gap-2.5 p-3 cursor-pointer', hoverBg)}
+        className={cn('flex items-start gap-2.5 p-3 cursor-pointer', hoverBg)}
         onClick={handleCardClick}
+        onPointerDown={onHeaderPointerDown}
+        onPointerMove={onHeaderPointerMove}
+        onPointerUp={clearLongPress}
+        onPointerCancel={clearLongPress}
+        onContextMenu={(e) => e.preventDefault()}
       >
         {selectionMode ? (
           <button
@@ -328,11 +404,12 @@ export function TaskCard({
           <button
             onClick={(e) => { e.stopPropagation(); cycleStatus(); }}
             className={cn(
-              'mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all duration-200',
+              'w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all duration-200',
               task.status === 'done' ? 'bg-status-done border-status-done text-white' :
               task.status === 'in_progress' ? 'border-status-progress text-status-progress' :
-              'border-muted-foreground/30 hover:border-status-todo'
+              'hover:border-status-todo'
             )}
+            style={task.status === 'todo' ? { borderColor: `${onColor}99`, backgroundColor: `${onColor}14` } : undefined}
           >
             {task.status === 'done' && <Check className="w-3 h-3" />}
             {task.status === 'in_progress' && <div className="w-2 h-2 rounded-full bg-status-progress" />}
@@ -340,30 +417,30 @@ export function TaskCard({
         )}
 
         <div className="flex flex-1 min-w-0 flex-col">
-          <div className={cn('text-sm font-medium leading-snug line-clamp-3 break-words', task.status === 'done' && 'line-through opacity-60')} title={task.title}>
+          <div className={cn('font-medium leading-snug line-clamp-3 break-words', task.status === 'done' && 'line-through opacity-60')} title={task.title} style={{ fontSize: 'var(--font-size-title)', lineHeight: 'var(--text-leading)', WebkitTextStroke: 'var(--stroke-title)' }}>
             {task.title}
           </div>
           {task.description ? (
-            <p className="text-xs opacity-70 line-clamp-2 break-words mt-0.5">{task.description}</p>
+            <p className="opacity-70 line-clamp-2 break-words mt-0.5" style={{ fontSize: 'var(--font-size-description)', fontFamily: 'var(--hand-font)', lineHeight: 'var(--text-leading)', WebkitTextStroke: 'var(--stroke-description)' }}>{task.description}</p>
           ) : null}
               <div className="flex items-center gap-2 flex-wrap mt-auto pt-2">
                 {showDate && displayDateLabel && (
-                  <span className={cn('text-xs sm:text-[11px] flex items-center gap-1', !dateLabelColor && 'opacity-75', dateLabelColor)}>
+                  <span className={cn('flex items-center gap-1', !dateLabelColor && 'opacity-75', dateLabelColor)}>
                     <Calendar className="w-3 h-3" /> {displayDateLabel}
                   </span>
                 )}
                 {task.time && (
-                  <span className="text-xs sm:text-[11px] opacity-75 flex items-center gap-1">
+                  <span className="opacity-75 flex items-center gap-1">
                     <Clock className="w-3 h-3" /> {task.time}
                   </span>
                 )}
                 {effectiveReminder && (
-                  <span className="text-xs sm:text-[11px] font-medium flex items-center gap-0.5">
+                  <span className="font-medium flex items-center gap-0.5">
                     <Bell className="w-3 h-3" /> {reminderLabel}
                   </span>
                 )}
                 {task.linked_id && (
-                  <span className="text-xs sm:text-[11px] opacity-75 flex items-center gap-0.5"><Copy className="w-3 h-3" /> لینک‌شده</span>
+                  <span className="opacity-75 flex items-center gap-0.5"><Copy className="w-3 h-3" /> لینک‌شده</span>
                 )}
                 {task.subtasks && task.subtasks.length > 0 && (
                   <span className="text-xs sm:text-[11px] opacity-75 flex items-center gap-0.5">
@@ -382,7 +459,7 @@ export function TaskCard({
               {isLtrCard ? <AlignLeft className="w-3.5 h-3.5" /> : <AlignRight className="w-3 h-3 opacity-70" />}
             </button>
           )}
-          {onSwapCards && swapGroupId && !selectionMode && (
+          {swapGroupId && !selectionMode && (
             <button
               {...dragHandleProps}
               title="جابه‌جایی (درگ)"
@@ -414,15 +491,24 @@ export function TaskCard({
               <div className="h-1.5 bg-muted rounded-full overflow-hidden mb-2">
                 <div className="h-full bg-status-done rounded-full transition-all duration-300" style={{ width: `${subtaskProgress}%` }} />
               </div>
-              <div ref={subGridRef} data-swap-group={`sub-${task.id}`} className="space-y-1">
-                {task.subtasks.map((subtask: Subtask) => (
+              <div ref={subGridRef} data-swap-group={`sub-${task.id}`} className="relative space-y-1">
+                <div
+                  ref={subIndicatorRef}
+                  className="absolute left-0 top-0 h-[2px] rounded-full bg-primary z-40 pointer-events-none"
+                  style={{ display: 'none' }}
+                />
+                {taskSubs.map((subtask: Subtask) => (
                   <SubtaskRow
                     key={subtask.id}
                     subtask={subtask}
                     groupId={`sub-${task.id}`}
+                    hoverClassName="hover:bg-black/10"
                     onToggle={handleToggleSubtask}
                     onRemove={handleRemoveSubtask}
-                    onDrop={handleSubSwap}
+                    onRename={handleRenameSubtask}
+                    onDrop={handleSubDrop}
+                    onDragMove={(x, y, id) => updateSubDropTarget(x, y, id)}
+                    onDragEnd={clearSubDropIndicator}
                   />
                 ))}
               </div>
@@ -477,7 +563,7 @@ export function TaskCard({
             <QuickBtn label="فردا" onClick={() => handleMoveToDate(getTomorrow())} />
             <QuickBtn label="بدون تاریخ" onClick={() => handleMoveToDate(null as any)} />
             <QuickBtn label="تاریخ دلخواه" onClick={() => setShowDatePicker(true)} />
-            <QuickBtn label="کپی لینک‌شده" onClick={() => setShowCopyModal(true)} />
+            <QuickBtn label="کپی" onClick={() => { setCopyLink(true); setShowCopyModal(true); }} />
             <QuickBtn label={effectiveReminder ? 'تغییر هشدار' : 'هشدار'} onClick={openReminderModal} variant={effectiveReminder ? 'primary' : undefined} onColor={onColor} accent={accent} />
             <QuickBtn label="رنگ کارت" onClick={() => setShowColorPicker(!showColorPicker)} />
             {!isNative && (
@@ -514,18 +600,26 @@ export function TaskCard({
                 <div className="fixed inset-0 z-40" onClick={() => setShowCopyModal(false)} />
                 <div className="fixed inset-0 z-50 m-auto w-72 h-fit max-h-[90%] overflow-y-auto bg-card text-foreground border-2 border-border rounded-xl shadow-2xl p-4 animate-scale-in">
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm font-medium">کپی لینک‌شده به تاریخ</span>
+                    <span className="text-sm font-medium">کپی به تاریخ</span>
                     <button onClick={() => setShowCopyModal(false)} className="p-1 rounded hover:bg-muted">
                       <X className="w-4 h-4" />
                     </button>
                   </div>
-                  <p className="text-xs text-muted-foreground mb-3">سابتسک‌ها بین هر دو تاریخ سینک می‌شوند</p>
+                  <p className="text-xs text-muted-foreground mb-3">تسک به تاریخ جدید کپی می‌شود</p>
                   <div className="mb-3">
                     <DateInput value={copyDate} onChange={setCopyDate} />
                   </div>
+                  <button type="button" onClick={() => setCopyLink(!copyLink)}
+                    className="w-full flex items-center gap-2 px-2 py-2 mb-3 rounded-lg bg-muted/50 text-xs">
+                    <div className={cn('w-4 h-4 rounded border flex items-center justify-center shrink-0',
+                      copyLink ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground/40')}>
+                      {copyLink && <Check className="w-2.5 h-2.5" />}
+                    </div>
+                    لینک (سابتسک‌ها بین دو تاریخ سینک شوند)
+                  </button>
                   <button onClick={handleCopyLinked}
                     className="w-full py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90">
-                    کپی و لینک
+                    کپی
                   </button>
                 </div>
               </>
@@ -627,10 +721,10 @@ function QuickBtn({ label, onClick, variant, onColor, accent }: { label: string;
   // card gradient. Solid onColor chips guarantee contrast on any card color:
   // primary text reuses the card accent, danger keeps red readable on the chip.
   if (onColor && accent && (variant === 'primary' || variant === 'danger')) {
-    const fg = variant === 'primary' ? accent : (onColor === '#ffffff' ? '#dc2626' : '#f87171');
+    const fg = variant === 'primary' ? shadeColor(accent, -0.45) : '#dc2626';
     return (
       <button onClick={(e) => { e.stopPropagation(); onClick(); }}
-        style={{ backgroundColor: onColor, color: fg }}
+        style={{ backgroundColor: '#ffffff', color: fg, border: '1px solid rgba(0,0,0,0.15)' }}
         className="px-2.5 py-1 rounded-lg text-xs sm:text-[11px] font-medium transition-opacity hover:opacity-80">
         {label}
       </button>

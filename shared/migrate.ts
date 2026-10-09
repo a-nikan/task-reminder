@@ -19,6 +19,7 @@ export function migrateDatabase(database: DatabaseSchema): void {
     if (t.color === undefined) t.color = null;
     if ((t as any).pinned === undefined) (t as any).pinned = 0;
     if ((t as any).text_dir === undefined) (t as any).text_dir = null;
+    if ((t as any).reminder_interval === undefined) (t as any).reminder_interval = 0;
     if (!t.updated_at) t.updated_at = t.created_at || nowIso();
     if (!t.created_at) t.created_at = t.updated_at;
   });
@@ -77,4 +78,7 @@ export function seedDefaultData(database: DatabaseSchema): void {
   if (!database.settings.widgetTransparency) database.settings.widgetTransparency = '0';
   if (!database.settings.uiScale) database.settings.uiScale = '100';
   if (!database.settings.widgetScale) database.settings.widgetScale = '100';
+  if (database.settings.fontBoldTitle === undefined) database.settings.fontBoldTitle = database.settings.fontBold || 'false';
+  if (database.settings.fontBoldSubtask === undefined) database.settings.fontBoldSubtask = database.settings.fontBold || 'false';
+  if (database.settings.fontBoldDescription === undefined) database.settings.fontBoldDescription = database.settings.fontBold || 'false';
 }

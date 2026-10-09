@@ -1,6 +1,6 @@
 {
   "name": "task-reminder",
-  "version": "2.10.2",
+  "version": "2.13.1",
   "description": "Professional Desktop Task Manager + Todo List + Calendar + Reminder",
   "author": {
     "name": "Ahmad Nikan",
@@ -19,6 +19,7 @@
   "dependencies": {
     "@capacitor/android": "^8.5.2",
     "@capacitor/app": "^8.1.2",
+    "@capacitor/browser": "^8.0.5",
     "@capacitor/cli": "^8.5.2",
     "@capacitor/core": "^8.5.2",
     "@capacitor/filesystem": "^8.1.4",
@@ -62,7 +63,13 @@
     "files": [
       "dist/**/*",
       "dist-electron/**/*",
-      "public/**/*"
+      "public/**/*",
+      "package.json",
+      "!**/node_modules/**",
+      "!android/**",
+      "!release/**",
+      "!.git/**",
+      "!*.log"
     ],
     "win": {
       "target": [

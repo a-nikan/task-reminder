@@ -113,6 +113,7 @@ export function OverdueView() {
                   selectionMode={selectionMode}
                   selected={selectedIds.includes(task.id)}
                   onToggleSelect={(t) => toggleSelect(t.id)}
+                  onLongPressSelect={() => { if (!selectionMode) setSelectionMode(true); toggleSelect(task.id); }}
                   reminderAt={remindersMap[task.id] ?? (task as any).reminder ?? null}
                   onReminderChanged={loadReminders}
                 onTasksChanged={reload}

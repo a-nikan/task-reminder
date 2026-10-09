@@ -323,6 +323,31 @@ export function applyAccentColor(value: string | undefined): void {
   r.setProperty('--accent', css);
 }
 
+export const HAND_FONT_KEY = 'handFont';
+export const FONT_FAMILY_KEY = 'fontFamily';
+export const FONT_SIZE_KEYS = ['fontSizeTitle', 'fontSizeSubtask', 'fontSizeDescription'] as const;
+
+export function applyFontSettings(settings: Record<string, string> | undefined): void {
+  if (typeof document === 'undefined') return;
+  const r = document.documentElement.style;
+  const family = settings?.[FONT_FAMILY_KEY] === 'digi' ? 'digi' : 'kamran';
+  r.setProperty('--hand-font', family === 'digi'
+    ? "'Digi Negare', 'Vazirmatn', 'Tahoma', sans-serif"
+    : "'B Kamran', 'Vazirmatn', 'Tahoma', sans-serif");
+  const t = parseInt(settings?.fontSizeTitle || '14', 10);
+  const s = parseInt(settings?.fontSizeSubtask || '12', 10);
+  const d = parseInt(settings?.fontSizeDescription || '12', 10);
+  r.setProperty('--font-size-title', `${isNaN(t) ? 14 : t}px`);
+  r.setProperty('--font-size-subtask', `${isNaN(s) ? 12 : s}px`);
+  r.setProperty('--font-size-description', `${isNaN(d) ? 12 : d}px`);
+  r.setProperty('--hand-stroke', settings?.fontBold === 'true' ? '0.35px' : '0px');
+  r.setProperty('--stroke-title', settings?.fontBoldTitle === 'true' ? '0.35px' : '0px');
+  r.setProperty('--stroke-subtask', settings?.fontBoldSubtask === 'true' ? '0.35px' : '0px');
+  r.setProperty('--stroke-description', settings?.fontBoldDescription === 'true' ? '0.35px' : '0px');
+  const lh = parseFloat(settings?.lineHeight || '1.6');
+  r.setProperty('--text-leading', String(isNaN(lh) ? 1.6 : Math.min(2.2, Math.max(1.2, lh))));
+}
+
 export const TRANSPARENCY_STEPS = [0, 20, 40, 60, 80];export const CARD_TRANSPARENCY_KEY = 'cardTransparency';
 export const WIDGET_TRANSPARENCY_KEY = 'widgetTransparency';
 
@@ -367,4 +392,20 @@ export function pickOnColor(accent: string): string {
     document.documentElement.classList.contains('dark');
   const eff = colorBrightness(accent) * 0.85 + (isDark ? 0.04 : 0.96) * 0.15;
   return eff > 0.42 ? '#16161d' : '#ffffff';
+}
+
+export const CARD_TEXT = '#ffffff';
+export const CARD_TEXT_SHADOW = '0 1px 2px rgba(0,0,0,0.45), 0 0 1px rgba(0,0,0,0.35)';
+
+/** Mix a hex color toward black (negative percent) or white (positive), -1..1 */
+export function shadeColor(hex: string, percent: number): string {
+  const m = hex.replace('#', '');
+  const full = m.length === 3 ? m.split('').map(c => c + c).join('') : m;
+  const n = parseInt(full, 16);
+  const amt = Math.round(255 * percent);
+  const cl = (v: number) => Math.min(255, Math.max(0, v));
+  const r = cl((n >> 16) + amt);
+  const g = cl(((n >> 8) & 0xff) + amt);
+  const b = cl((n & 0xff) + amt);
+  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
 }

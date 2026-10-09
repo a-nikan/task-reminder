@@ -9,6 +9,8 @@ import {
   cardGradient,
   getTransparency,
   WIDGET_TRANSPARENCY_KEY,
+  CARD_TEXT,
+  CARD_TEXT_SHADOW,
 } from '../utils';
 import type { Task, TaskStatus, Subtask } from '../types';
 import { SubtaskRow } from './SubtaskRow';
@@ -79,7 +81,7 @@ export function TaskWidget({ taskId }: { taskId: string }) {
   }, [widgetScale]);
 
   // Subtask swap (hook must sit above the early return below)
-  const { gridRef: wsubGridRef, animateSwap: animateWsubSwap } = useCardSwap();
+  const { gridRef: wsubGridRef, indicatorRef: wsubIndicatorRef, dropTargetRef: wsubDropTargetRef, animateSwap: animateWsubSwap, updateDropTarget: updateWsubDropTarget, clearDropIndicator: clearWsubDropIndicator } = useCardSwap();
 
   if (!task) return null;
 
@@ -124,17 +126,31 @@ export function TaskWidget({ taskId }: { taskId: string }) {
     refreshCurrentView();
   };
 
-  // Subtask swap drag & drop within this widget
-  const handleWsubSwap = (aId: string, bId: string) => animateWsubSwap(async () => {
+  const handleRenameSubtask = async (subtaskId: string, title: string) => {
+    const next = (task.subtasks || []).map(st => st.id === subtaskId ? { ...st, title } : st);
+    await window.electronAPI.updateTask(task.id, { subtasks: next });
+    await window.electronAPI.notifyWidgetChanged(task.id);
+    await load();
+    refreshCurrentView();
+  };
+
+  // Subtask insertion drag & drop within this widget
+  const handleWsubSwap = (draggedId: string) => animateWsubSwap(async () => {
+    const t = wsubDropTargetRef.current;
+    if (!t) return;
     const arr = [...(task.subtasks || [])];
-    const ia = arr.findIndex(s => s.id === aId);
-    const ib = arr.findIndex(s => s.id === bId);
-    if (ia < 0 || ib < 0) return;
-    [arr[ia], arr[ib]] = [arr[ib], arr[ia]];
+    const from = arr.findIndex(s => s.id === draggedId);
+    let to = arr.findIndex(s => s.id === t.targetId);
+    if (from < 0 || to < 0) return;
+    const [moved] = arr.splice(from, 1);
+    to = arr.findIndex(s => s.id === t.targetId);
+    if (!t.before) to += 1;
+    arr.splice(to, 0, moved);
     await window.electronAPI.updateTask(task.id, { subtasks: arr });
     await window.electronAPI.notifyWidgetChanged(task.id);
     await load();
     refreshCurrentView();
+    clearWsubDropIndicator();
   });
 
   const handleSnooze = async (minutes: number) => {
@@ -187,10 +203,11 @@ export function TaskWidget({ taskId }: { taskId: string }) {
         className="h-full flex flex-col rounded-2xl overflow-hidden"
         style={{
           background: cardGradient(accent, transparency),
-          color: onColor,
+          color: CARD_TEXT,
+          textShadow: CARD_TEXT_SHADOW,
         }}
       >
-        <div className="drag-region flex items-center gap-2 px-2.5 pt-2 pb-1.5 select-none cursor-move shrink-0">
+        <div className="drag-region flex items-start gap-2 px-2.5 pt-2 pb-1.5 select-none cursor-move shrink-0">
           <button
             onClick={cycleStatus}
             title="تغییر وضعیت"
@@ -198,14 +215,14 @@ export function TaskWidget({ taskId }: { taskId: string }) {
               'no-drag mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all',
               task.status === 'done' ? 'bg-status-done border-status-done text-white' :
               task.status === 'in_progress' ? 'border-status-progress text-status-progress' :
-              'border-muted-foreground/30 hover:border-status-todo'
+              'border-muted-foreground/60 hover:border-status-todo'
             )}
-            style={task.status === 'todo' ? { borderColor: `${onColor}66` } : undefined}
+            style={task.status === 'todo' ? { borderColor: `${onColor}99`, backgroundColor: `${onColor}14` } : undefined}
           >
             {task.status === 'done' && <Check className="w-3 h-3" />}
             {task.status === 'in_progress' && <div className="w-2 h-2 rounded-full bg-status-progress" />}
           </button>
-          <span className={cn('text-sm font-medium leading-snug line-clamp-2 break-words flex-1', task.status === 'done' && 'line-through opacity-60')}>
+          <span className={cn('font-medium leading-snug line-clamp-2 break-words flex-1', task.status === 'done' && 'line-through opacity-60')} style={{ fontSize: 'var(--font-size-title)', lineHeight: 'var(--text-leading)', WebkitTextStroke: 'var(--stroke-title)' }}>
             {task.title}
           </span>
           <button
@@ -231,7 +248,8 @@ export function TaskWidget({ taskId }: { taskId: string }) {
             <p
               onClick={() => setDescExpanded(!descExpanded)}
               title={descExpanded ? 'بستن' : 'برای خواندن کامل کلیک کن'}
-              className={cn('text-[11px] opacity-75 break-words mb-1 cursor-pointer', descExpanded ? 'max-h-40 overflow-y-auto' : 'line-clamp-2')}
+              className={cn('opacity-75 break-words mb-1 cursor-pointer', descExpanded ? 'max-h-40 overflow-y-auto' : 'line-clamp-2')}
+              style={{ fontSize: 'var(--font-size-description)', fontFamily: 'var(--hand-font)', lineHeight: 'var(--text-leading)', WebkitTextStroke: 'var(--stroke-description)' }}
             >
               {task.description}
             </p>
@@ -251,17 +269,26 @@ export function TaskWidget({ taskId }: { taskId: string }) {
           {(task.subtasks || []).length > 0 && (
             <div className="space-y-1 mb-1.5">
               <div className="text-[10px] opacity-70">سابتسک‌ها ({subtaskDone}/{(task.subtasks || []).length})</div>
-              <div ref={wsubGridRef} data-swap-group={`wsub-${task.id}`} className="space-y-1">
-                {(task.subtasks || []).map((st: Subtask) => (
+              <div ref={wsubGridRef} data-swap-group={`wsub-${task.id}`} className="relative space-y-1">
+                <div
+                  ref={wsubIndicatorRef}
+                  className="absolute left-0 top-0 h-[2px] rounded-full bg-primary z-40 pointer-events-none"
+                  style={{ display: 'none' }}
+                />
+                {[...(task.subtasks || [])].sort((a, b) => Number(!!a.completed) - Number(!!b.completed)).map((st: Subtask) => (
                   <SubtaskRow
                     key={st.id}
                     subtask={st}
                     groupId={`wsub-${task.id}`}
+                    hoverClassName="hover:bg-black/10"
                     accent={accent}
                     onColor={onColor}
                     onToggle={handleToggleSubtask}
                     onRemove={handleRemoveSubtask}
+                    onRename={handleRenameSubtask}
                     onDrop={handleWsubSwap}
+                    onDragMove={(x, y, id) => updateWsubDropTarget(x, y, id)}
+                    onDragEnd={clearWsubDropIndicator}
                   />
                 ))}
               </div>

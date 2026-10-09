@@ -2,6 +2,7 @@ import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import type { LocalNotificationSchema } from '@capacitor/local-notifications';
 import { Share } from '@capacitor/share';
+import { Browser } from '@capacitor/browser';
 import { App as CapacitorApp } from '@capacitor/app';
 import type { DatabaseSchema, Task } from '../../shared/types';
 import { createEmptyDb, migrateDatabase, seedDefaultData } from '../../shared/migrate';
@@ -296,6 +297,23 @@ async function dismissReminderById(reminderId: string): Promise<void> {
   await save();
 }
 
+/** Repeat mode: re-arm an interval reminder for its next round (never dismisses). */
+async function rearmIntervalReminder(rem: any): Promise<void> {
+  if (!db) return;
+  const mins = (rem as any).interval_minutes || 0;
+  if (mins <= 0) return;
+  const newTime = new Date(Date.now() + mins * 60000).toISOString();
+  rem.snoozed_until = newTime;
+  rem.fired_at = null;
+  const task = db.tasks.find(t => t.id === rem.task_id);
+  if (task) {
+    task.reminder = newTime;
+    task.updated_at = nowIso();
+  }
+  await save();
+  await rescheduleAll();
+}
+
 async function registerListeners(): Promise<void> {
   await CapacitorApp.addListener('backButton', () => {
     const s = useStore.getState();
@@ -332,7 +350,11 @@ async function registerListeners(): Promise<void> {
         const rem = db?.reminders.find(x => x.id === String(extra.reminderId));
         const snoozedFuture = !!(rem && rem.snoozed_until && new Date(rem.snoozed_until).getTime() > Date.now());
         if (snoozedFuture) return;
-        await dismissReminderById(String(extra.reminderId));
+        if (rem && (rem as any).interval_minutes > 0) {
+          await rearmIntervalReminder(rem);
+        } else {
+          await dismissReminderById(String(extra.reminderId));
+        }
       }
       const data: NotificationActionData = {
         taskId: String(extra.taskId || ''),
@@ -358,7 +380,12 @@ async function registerListeners(): Promise<void> {
         useStore.getState().showToast(`⏳ ${labels[minutes] || minutes} دقیقه بعد دوباره یادآوری می‌شود`, 'info');
         return;
       }
-      if (extra.reminderId) await dismissReminderById(String(extra.reminderId));
+      const firedRem = extra.reminderId ? db?.reminders.find(x => x.id === String(extra.reminderId)) : null;
+      if (firedRem && (firedRem as any).interval_minutes > 0) {
+        await rearmIntervalReminder(firedRem);
+      } else if (extra.reminderId) {
+        await dismissReminderById(String(extra.reminderId));
+      }
       const data: NotificationActionData = {
         taskId: String(extra.taskId || ''),
         reminderId: String(extra.reminderId || ''),
@@ -376,15 +403,16 @@ function setReminderInDb(taskId: string, remindAt: string): any {
     if (r.task_id === taskId && !r.dismissed) r.dismissed = 1;
   });
   const id = `rem-${taskId}-${Date.now()}`;
+  const task = d.tasks.find(t => t.id === taskId);
   d.reminders.push({
     id,
     task_id: taskId,
     remind_at: remindAt,
     snoozed_until: null,
     dismissed: 0,
+    interval_minutes: (task as any)?.reminder_interval || null,
     created_at: new Date().toISOString(),
   });
-  const task = d.tasks.find(t => t.id === taskId);
   if (task) {
     task.reminder = remindAt;
     task.updated_at = new Date().toISOString();
@@ -666,6 +694,14 @@ export function createAndroidApi(): Window['electronAPI'] {
     getReminder: (taskId: string) => run(d => getReminderInDb(taskId)),
     getActiveReminders: () => run(d => getActiveRemindersInDb()),
     snoozeReminder: (taskId: string, minutes: number) => run(d => snoozeReminderInDb(taskId, minutes), true),
+    setReminderInterval: (taskId: string, minutes: number) =>
+      run(
+        d => {
+          ops.setReminderInterval(d, taskId, minutes);
+          return { success: true as const };
+        },
+        true,
+      ),
 
     // Desktop widgets are Windows-only; no-ops on Android
     widgetOpen: async () => ({ success: false as const }),
@@ -674,6 +710,7 @@ export function createAndroidApi(): Window['electronAPI'] {
     showTaskInMain: async () => ({ success: false as const }),
     editTaskInMain: async () => ({ success: false as const }),
     widgetResize: async () => ({ success: false as const }),
+    openExternal: (url: string) => enqueue(() => Browser.open({ url })),
     notifyWidgetChanged: async () => ({ success: true as const }),
     onTasksChanged: () => {},
 

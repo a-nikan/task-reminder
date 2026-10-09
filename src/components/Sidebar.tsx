@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { useStore } from '../store';
 import {
   CalendarDays, ListTodo, Clock, AlertTriangle, Star, LayoutGrid,
-  BarChart3, Settings, Plus, Keyboard
+  BarChart3, Settings, Plus, Keyboard, RefreshCw
 } from 'lucide-react';
+import { syncNow } from '../platform/lanSync';
 import { cn, getToday, getHeaderDate } from '../utils';
 import type { ViewType } from '../types';
 
@@ -33,10 +34,11 @@ export function Sidebar() {
   const {
     view, setView, settings, setSelectedDate,
     setShowNewTaskForm, setOnboardingComplete, updateSettings,
-    sidebarOpen, setSidebarOpen,
+    sidebarOpen, setSidebarOpen, showToast, refreshCurrentView,
   } = useStore();
 
   const [appVersion, setAppVersion] = useState('');
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     window.electronAPI.getVersion().then(v => setAppVersion(v)).catch(() => {});
@@ -46,6 +48,25 @@ export function Sidebar() {
     if (id === 'today') setSelectedDate(null);
     setView(id);
     setSidebarOpen(false);
+  };
+
+  const handleSync = async () => {
+    if (syncing) return;
+    setSyncing(true);
+    try {
+      const r = await syncNow();
+      if (r.ok) {
+        await refreshCurrentView();
+        setSidebarOpen(false);
+      }
+      else if (r.error === 'not_configured') showToast('ابتدا آدرس و توکن را در تنظیمات وارد کنید', 'error');
+      else if (r.error === 'unreachable') showToast('به کامپیوتر وصل نشد — هر دو به یک وای‌فای متصل و برنامه ویندوز باز باشد', 'error');
+      else if (r.error === 'timeout') showToast('کامپیوتر پاسخ نداد — دوباره تلاش کنید', 'error');
+      else if (r.error === 'bad_token') showToast('توکن نادرست است', 'error');
+      else if (r.error !== 'busy') showToast('همگام‌سازی ناموفق بود', 'error');
+    } finally {
+      setSyncing(false);
+    }
   };
 
   useEffect(() => {
@@ -141,6 +162,13 @@ export function Sidebar() {
               <span className="flex-1 text-right">{item.label}</span>
             </button>
           ))}
+          <button
+            onClick={handleSync}
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-150 text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <RefreshCw className={cn('w-4 h-4', syncing && 'animate-spin')} />
+            <span className="flex-1 text-right">{syncing ? 'در حال همگام‌سازی...' : 'همگام‌سازی'}</span>
+          </button>
         </div>
       </div>
 

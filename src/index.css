@@ -56,6 +56,22 @@
   border-color: hsl(var(--border));
 }
 
+@font-face {
+  font-family: 'Digi Negare';
+  src: url('/fonts/Digi Negare Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'B Kamran';
+  src: url('/fonts/B Kamran.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 body {
   font-family: 'Vazirmatn', 'Tahoma', 'Arial', sans-serif;
   background-color: hsl(var(--background));
@@ -154,6 +170,11 @@ html, body {
   0%, 100% { transform: rotate(0deg) scale(1.03); }
   25% { transform: rotate(1.4deg) scale(1.03); }
   75% { transform: rotate(-1.4deg) scale(1.03); }
+}
+
+@keyframes drop-indicator-in {
+  from { transform: scaleX(0); opacity: 0; }
+  to { transform: scaleX(1); opacity: 1; }
 }
 
 .swap-target {

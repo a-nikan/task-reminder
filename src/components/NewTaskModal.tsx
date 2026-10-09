@@ -4,13 +4,16 @@ import { X } from 'lucide-react';
 import { TaskForm, scheduleReminderFromForm, type TaskFormData } from './TaskForm';
 
 export function NewTaskModal() {
-  const { setShowNewTaskForm, refreshCurrentView, showToast, view } = useStore();
+  const { setShowNewTaskForm, refreshCurrentView, showToast, selectedDate } = useStore();
+
+  const nextHour = new Date(Date.now() + 60 * 60 * 1000);
+  const pad = (n: number) => String(n).padStart(2, '0');
 
   const initial: TaskFormData = {
     title: '',
     description: '',
-    date: view === 'today' ? getToday() : '',
-    time: '',
+    date: selectedDate || getToday(),
+    time: `${pad(nextHour.getHours())}:${pad(nextHour.getMinutes())}`,
     priority: 'medium',
     categoryId: '',
     color: '',
@@ -18,6 +21,7 @@ export function NewTaskModal() {
     subtasks: [],
     recurrence: '',
     reminderOffset: 0,
+    reminderInterval: 0,
     widget: false,
   };
 
@@ -34,6 +38,7 @@ export function NewTaskModal() {
       subtasks: data.subtasks,
       recurrence: data.recurrence || null,
       reminder_offset: data.reminderOffset,
+      reminder_interval: data.reminderInterval || 0,
       pinned: data.widget ? 1 : 0,
       status: 'todo' as const,
     });

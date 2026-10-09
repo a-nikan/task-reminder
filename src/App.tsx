@@ -20,6 +20,7 @@ import { CommandPalette } from './components/CommandPalette';
 import { Toast } from './components/Toast';
 import { ReminderAlert } from './components/ReminderAlert';
 import { TaskWidget } from './components/TaskWidget';
+import { syncNow as lanSyncNow } from './platform/lanSync';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { Onboarding } from './components/Onboarding';
 
@@ -28,7 +29,7 @@ export default function App() {
     view, setView, loadSettings, loadCategories, loadTags,
     showTaskDetail, showNewTaskForm, showEditTaskForm, showCommandPalette,
     onboardingComplete, setShowNewTaskForm, showToast, refreshCurrentView,
-    setIsMaximized, settings,
+    setIsMaximized, settings, settingsLoaded,
   } = useStore();
 
   useEffect(() => {
@@ -36,6 +37,10 @@ export default function App() {
       await loadSettings();
       await loadCategories();
       await loadTags();
+      // On phone: sync with the server right away on launch
+      if ((window as any).Capacitor?.isNativePlatform?.()) {
+        lanSyncNow().then(r => { if (r.ok) refreshCurrentView(); }).catch(() => {});
+      }
     };
     init();
 
@@ -132,6 +137,11 @@ export default function App() {
   }, [settings.uiScale]);
 
   const widgetMatch = window.location.hash.match(/^#\/?widget\/(.+)$/);
+  // Blank splash until settings arrive: prevents the onboarding screen
+  // flashing on every launch (slow init on Android)
+  if (!settingsLoaded) {
+    return <div className="h-screen w-screen bg-background" />;
+  }
   if (widgetMatch) {
     return (
       <div className="h-full w-full overflow-hidden bg-transparent">

@@ -10,7 +10,7 @@ import type {
 } from './types';
 import { addTombstone, addTombstones, nowIso, removeTombstone } from './sync';
 
-const LINKED_SYNC_FIELDS = ['title', 'description', 'status', 'priority', 'time', 'subtasks', 'tags', 'recurrence', 'reminder_offset', 'completed_at', 'color'] as const;
+const LINKED_SYNC_FIELDS = ['title', 'description', 'status', 'priority', 'time', 'subtasks', 'tags', 'recurrence', 'reminder_offset', 'reminder_interval', 'completed_at', 'color'] as const;
 
 export function syncLinkedTaskFull(db: DatabaseSchema, taskId: string): void {
   const task = db.tasks.find(t => t.id === taskId);
@@ -41,6 +41,7 @@ export function createTask(db: DatabaseSchema, input: any): Task {
     time: input.time || null,
     reminder: input.reminder || null,
     reminder_offset: input.reminder_offset || 0,
+    reminder_interval: input.reminder_interval || 0,
     category_id: input.category_id || null,
     color: input.color || null,
     pinned: input.pinned ? 1 : 0,
@@ -69,7 +70,7 @@ export function updateTask(db: DatabaseSchema, id: string, updates: any): Task |
 
   const now = nowIso();
   const oldDate = task.date || null;
-  const allowedFields = ['title', 'description', 'status', 'priority', 'date', 'time', 'reminder', 'reminder_offset', 'category_id', 'color', 'pinned', 'text_dir', 'tags', 'subtasks', 'linked_id', 'recurrence', 'recurrence_parent', 'order_index', 'archived', 'favorite'];
+  const allowedFields = ['title', 'description', 'status', 'priority', 'date', 'time', 'reminder', 'reminder_offset', 'reminder_interval', 'category_id', 'color', 'pinned', 'text_dir', 'tags', 'subtasks', 'linked_id', 'recurrence', 'recurrence_parent', 'order_index', 'archived', 'favorite'];
 
   for (const [key, value] of Object.entries(updates)) {
     if (allowedFields.includes(key)) {
@@ -150,6 +151,18 @@ export function moveTaskToDate(db: DatabaseSchema, id: string, date: string | nu
     task.updated_at = nowIso();
   }
   return task || null;
+}
+
+/** Sync the repeat interval onto the task's active reminder rows (no-op if none). */
+export function setReminderInterval(db: DatabaseSchema, taskId: string, minutes: number): boolean {
+  let touched = false;
+  (db.reminders || []).forEach(r => {
+    if (r.task_id === taskId && !r.dismissed) {
+      (r as any).interval_minutes = minutes > 0 ? minutes : null;
+      touched = true;
+    }
+  });
+  return touched;
 }
 
 function resetTaskForNewDate(task: Task): void {
@@ -270,7 +283,7 @@ export function queryTasks(db: DatabaseSchema, filters?: TaskFilters): Task[] {
     if (filters.dateTo) tasks = tasks.filter(t => t.date && t.date <= filters.dateTo!);
     if (filters.categoryId) tasks = tasks.filter(t => t.category_id === filters.categoryId);
     if (filters.priority) tasks = tasks.filter(t => t.priority === filters.priority);
-    if (filters.archived !== undefined) tasks = db.tasks.filter(t => t.archived === (filters.archived ? 1 : 0));
+    if (filters.archived !== undefined) tasks = tasks.filter(t => t.archived === (filters.archived ? 1 : 0));
     if (filters.favorite) tasks = tasks.filter(t => t.favorite);
     if (filters.noDate) tasks = tasks.filter(t => !t.date);
     if (filters.hasDate) tasks = tasks.filter(t => t.date);

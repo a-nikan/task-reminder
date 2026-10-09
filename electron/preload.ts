@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer, shell } from 'electron';
+import { contextBridge, ipcRenderer } from 'electron';
 
 contextBridge.exposeInMainWorld('electronAPI', {
   // Window controls
@@ -75,6 +75,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getReminder: (taskId: string) => ipcRenderer.invoke('reminder:get', taskId),
   getActiveReminders: () => ipcRenderer.invoke('reminders:getActive'),
   snoozeReminder: (taskId: string, minutes: number) => ipcRenderer.invoke('reminder:snooze', taskId, minutes),
+  setReminderInterval: (taskId: string, minutes: number) => ipcRenderer.invoke('reminder:setInterval', taskId, minutes),
 
   // App events
   onNewTask: (callback: () => void) => ipcRenderer.on('new-task', () => callback()),
@@ -84,8 +85,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onEditTask: (callback: (data: { taskId: string }) => void) => ipcRenderer.on('edit-task', (_event, data) => callback(data)),
 
   // Shell
-  openExternal: (url: string) => shell.openExternal(url),
-
+  openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
   // App version
   getVersion: () => ipcRenderer.invoke('app:version'),
 

@@ -16,13 +16,15 @@ export function TaskDetailPanel() {
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
   const [showCopyModal, setShowCopyModal] = useState(false);
   const [copyDate, setCopyDate] = useState(getTomorrow());
+  const [copyLink, setCopyLink] = useState(true);
   const [linkedTasks, setLinkedTasks] = useState<Task[]>([]);
   const [activeReminder, setActiveReminder] = useState<any>(null);
   const [reminderDate, setReminderDate] = useState('');
   const [reminderTime, setReminderTime] = useState('');
   const [showReminderEditor, setShowReminderEditor] = useState(false);
   // Subtask swap hook must sit above the early return below
-  const { gridRef: subGridRef, animateSwap: animateSubSwap } = useCardSwap();
+  const { gridRef: subGridRef, indicatorRef: subIndicatorRef, dropTargetRef: subDropTargetRef, animateSwap: animateSubSwap, updateDropTarget: updateSubDropTarget, clearDropIndicator: clearSubDropIndicator } = useCardSwap();
+  const sortedSubs = [...subtasks].sort((a, b) => Number(!!a.completed) - Number(!!b.completed));
 
   useEffect(() => {
     if (selectedTask) {
@@ -171,13 +173,29 @@ export function TaskDetailPanel() {
     reloadAll();
   };
 
-  // Subtask swap drag & drop within this task
-  const handleSubSwap = (aId: string, bId: string) => animateSubSwap(async () => {
+  const handleRenameSubtask = async (subtaskId: string, title: string) => {
+    const next = subtasks.map(st => st.id === subtaskId ? { ...st, title } : st);
+    const updated = await window.electronAPI.updateTask(task.id, { subtasks: next });
+    if (updated) {
+      setTask(updated);
+      setSelectedTask(updated);
+      setSubtasks(updated.subtasks || []);
+    }
+    reloadAll();
+  };
+
+  // Subtask insertion drag & drop within this task
+  const handleSubSwap = (draggedId: string) => animateSubSwap(async () => {
+    const t = subDropTargetRef.current;
+    if (!t) return;
     const arr = [...subtasks];
-    const ia = arr.findIndex(s => s.id === aId);
-    const ib = arr.findIndex(s => s.id === bId);
-    if (ia < 0 || ib < 0) return;
-    [arr[ia], arr[ib]] = [arr[ib], arr[ia]];
+    const from = arr.findIndex(s => s.id === draggedId);
+    let to = arr.findIndex(s => s.id === t.targetId);
+    if (from < 0 || to < 0) return;
+    const [moved] = arr.splice(from, 1);
+    to = arr.findIndex(s => s.id === t.targetId);
+    if (!t.before) to += 1;
+    arr.splice(to, 0, moved);
     const updated = await window.electronAPI.updateTask(task.id, { subtasks: arr });
     if (updated) {
       setTask(updated);
@@ -185,15 +203,37 @@ export function TaskDetailPanel() {
       setSubtasks(updated.subtasks || []);
     }
     reloadAll();
+    clearSubDropIndicator();
   });
 
   const handleCopyLinked = async () => {
     if (!copyDate) return;
-    const created: any = await window.electronAPI.copyLinkedTask(task.id, copyDate);
-    if (created?.id) {
-      await armReminderIfFuture(created.id, created.date, created.time, created.reminder_offset || 0);
+    if (copyLink) {
+      const created: any = await window.electronAPI.copyLinkedTask(task.id, copyDate);
+      if (created?.id) {
+        await armReminderIfFuture(created.id, created.date, created.time, created.reminder_offset || 0);
+      }
+      showToast('تسک کپی شد و لینک شد');
+    } else {
+      const created: any = await window.electronAPI.createTask({
+        title: task.title,
+        description: task.description || '',
+        date: copyDate,
+        time: task.time || null,
+        priority: task.priority,
+        category_id: (task as any).category_id || null,
+        color: (task as any).color || null,
+        tags: (task as any).tags || [],
+        subtasks: (subtasks || []).map(st => ({ ...st, completed: false })),
+        recurrence: null,
+        reminder_offset: task.reminder_offset || 0,
+        status: 'todo',
+      });
+      if (created?.id) {
+        await armReminderIfFuture(created.id, created.date, created.time, created.reminder_offset || 0);
+      }
+      showToast('تسک کپی شد');
     }
-    showToast('تسک کپی شد و لینک شد');
     setShowCopyModal(false);
     await refreshTask();
   };
@@ -260,7 +300,9 @@ export function TaskDetailPanel() {
     : 0;
 
   return (
-    <div className="fixed inset-0 z-40 bg-card overflow-y-auto animate-slide-in lg:static lg:z-auto lg:h-full lg:w-80 lg:shrink-0 lg:border-l lg:border-border">
+    <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={handleClose} />
+      <div dir={isLtrPanel ? 'ltr' : undefined} className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto bg-card rounded-2xl border border-border shadow-2xl animate-slide-up">
       <div className="p-4">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-medium text-muted-foreground">جزئیات تسک</h2>
@@ -349,7 +391,7 @@ export function TaskDetailPanel() {
 
         {task.description ? (
           <div className="mb-4 p-3 rounded-lg bg-muted/50">
-            <p className="text-sm text-muted-foreground whitespace-pre-wrap">{task.description}</p>
+            <p className="text-muted-foreground whitespace-pre-wrap" style={{ fontSize: 'var(--font-size-description)', fontFamily: 'var(--hand-font)', lineHeight: 'var(--text-leading)', WebkitTextStroke: 'var(--stroke-description)' }}>{task.description}</p>
           </div>
         ) : null}
 
@@ -426,8 +468,13 @@ export function TaskDetailPanel() {
             </div>
           )}
 
-          <div ref={subGridRef} data-swap-group={`sub-${task.id}`} className="space-y-1">
-            {subtasks.map(subtask => (
+          <div ref={subGridRef} data-swap-group={`sub-${task.id}`} className="relative space-y-1">
+            <div
+              ref={subIndicatorRef}
+              className="absolute left-0 top-0 h-[2px] rounded-full bg-primary z-40 pointer-events-none"
+              style={{ display: 'none' }}
+            />
+            {sortedSubs.map((subtask: Subtask) => (
               <SubtaskRow
                 key={subtask.id}
                 subtask={subtask}
@@ -436,7 +483,10 @@ export function TaskDetailPanel() {
                 completedClassName="line-through text-muted-foreground"
                 onToggle={handleToggleSubtask}
                 onRemove={handleDeleteSubtask}
+                onRename={handleRenameSubtask}
                 onDrop={handleSubSwap}
+                onDragMove={(x, y, id) => updateSubDropTarget(x, y, id)}
+                onDragEnd={clearSubDropIndicator}
               />
             ))}
           </div>
@@ -463,7 +513,7 @@ export function TaskDetailPanel() {
             <QuickAction label="امروز" onClick={() => handleMoveToDate(getToday())} />
             <QuickAction label="فردا" onClick={() => handleMoveToDate(getTomorrow())} />
             <QuickAction label="بدون تاریخ" onClick={() => handleMoveToDate(null)} />
-            <QuickAction label="کپی لینک‌شده" onClick={() => setShowCopyModal(true)} icon={<Copy className="w-3.5 h-3.5" />} />
+            <QuickAction label="کپی" onClick={() => { setCopyLink(true); setShowCopyModal(true); }} icon={<Copy className="w-3.5 h-3.5" />} />
           </div>
         </div>
 
@@ -488,18 +538,27 @@ export function TaskDetailPanel() {
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/50" onClick={() => setShowCopyModal(false)} />
           <div className="relative bg-card rounded-2xl border border-border shadow-2xl p-6 w-80 animate-slide-up">
-            <h3 className="text-base font-bold mb-2">کپی لینک‌شده</h3>
-            <p className="text-xs text-muted-foreground mb-4">تسک به تاریخ جدید کپی می‌شود و سابتسک‌ها سینک خواهند شد</p>
+            <h3 className="text-base font-bold mb-2">کپی تسک</h3>
+            <p className="text-xs text-muted-foreground mb-4">تسک به تاریخ جدید کپی می‌شود</p>
             <div className="mb-4">
               <DateInput value={copyDate} onChange={setCopyDate} />
             </div>
+            <button type="button" onClick={() => setCopyLink(!copyLink)}
+              className="w-full flex items-center gap-2 px-2 py-2 mb-4 rounded-lg bg-muted/50 text-xs">
+              <div className={cn('w-4 h-4 rounded border flex items-center justify-center shrink-0',
+                copyLink ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground/40')}>
+                {copyLink && <Check className="w-2.5 h-2.5" />}
+              </div>
+              لینک (سابتسک‌ها بین دو تاریخ سینک شوند)
+            </button>
             <div className="flex gap-2">
               <button onClick={handleCopyLinked} className="flex-1 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90">کپی</button>
               <button onClick={() => setShowCopyModal(false)} className="px-4 py-2 rounded-xl bg-muted text-muted-foreground text-sm hover:bg-muted/80">لغو</button>
             </div>
-          </div>
+           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

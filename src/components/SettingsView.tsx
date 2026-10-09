@@ -61,6 +61,17 @@ export function SettingsView() {
   const [draftWidgetT, setDraftWidgetT] = useState(settings.widgetTransparency || '0');
   const [draftScale, setDraftScale] = useState(settings.uiScale || '100');
   const [draftWidgetScale, setDraftWidgetScale] = useState(settings.widgetScale || '100');
+  const [draftHandFont, setDraftHandFont] = useState(settings.handFont === 'true');
+  const [draftFontFamily, setDraftFontFamily] = useState(settings.fontFamily || 'kamran');
+  const [draftBoldTitle, setDraftBoldTitle] = useState(settings.fontBoldTitle === 'true');
+  const [draftBoldSubtask, setDraftBoldSubtask] = useState(settings.fontBoldSubtask === 'true');
+  const [draftBoldDescription, setDraftBoldDescription] = useState(settings.fontBoldDescription === 'true');
+  const [draftLeading, setDraftLeading] = useState(parseFloat(settings.lineHeight || '1.6'));
+  const [draftFontSizes, setDraftFontSizes] = useState({
+    fontSizeTitle: parseInt(settings.fontSizeTitle || '14', 10),
+    fontSizeSubtask: parseInt(settings.fontSizeSubtask || '12', 10),
+    fontSizeDescription: parseInt(settings.fontSizeDescription || '12', 10),
+  });
   const [draftShowOnStartup, setDraftShowOnStartup] = useState(settings.showOnStartup !== 'false');
   const [draftMorning, setDraftMorning] = useState(settings.morningNotification !== 'false');
   const [draftAutoLaunch, setDraftAutoLaunch] = useState(false);
@@ -133,6 +144,17 @@ export function SettingsView() {
     setDraftWidgetT(settings.widgetTransparency || '0');
     setDraftScale(settings.uiScale || '100');
     setDraftWidgetScale(settings.widgetScale || '100');
+    setDraftHandFont(settings.handFont === 'true');
+    setDraftFontFamily(settings.fontFamily || 'kamran');
+    setDraftBoldTitle(settings.fontBoldTitle === 'true');
+    setDraftBoldSubtask(settings.fontBoldSubtask === 'true');
+    setDraftBoldDescription(settings.fontBoldDescription === 'true');
+    setDraftLeading(parseFloat(settings.lineHeight || '1.6'));
+    setDraftFontSizes({
+      fontSizeTitle: parseInt(settings.fontSizeTitle || '14', 10),
+      fontSizeSubtask: parseInt(settings.fontSizeSubtask || '12', 10),
+      fontSizeDescription: parseInt(settings.fontSizeDescription || '12', 10),
+    });
     setDraftShowOnStartup(settings.showOnStartup !== 'false');
     setDraftMorning(settings.morningNotification !== 'false');
   }, [settings, theme, accentColor]);
@@ -160,11 +182,20 @@ export function SettingsView() {
       draftWidgetT !== (settings.widgetTransparency || '0') ||
       draftScale !== (settings.uiScale || '100') ||
       draftWidgetScale !== (settings.widgetScale || '100') ||
+      String(draftHandFont) !== String(settings.handFont === 'true') ||
+      draftFontFamily !== (settings.fontFamily || 'kamran') ||
+      String(draftBoldTitle) !== String(settings.fontBoldTitle === 'true') ||
+      String(draftBoldSubtask) !== String(settings.fontBoldSubtask === 'true') ||
+      String(draftBoldDescription) !== String(settings.fontBoldDescription === 'true') ||
+      draftLeading !== (parseFloat(settings.lineHeight || '1.6')) ||
+      draftFontSizes.fontSizeTitle !== (parseInt(settings.fontSizeTitle || '14', 10)) ||
+      draftFontSizes.fontSizeSubtask !== (parseInt(settings.fontSizeSubtask || '12', 10)) ||
+      draftFontSizes.fontSizeDescription !== (parseInt(settings.fontSizeDescription || '12', 10)) ||
       draftShowOnStartup !== (settings.showOnStartup !== 'false') ||
       draftMorning !== (settings.morningNotification !== 'false') ||
       draftAutoLaunch !== persistedAutoLaunch
     );
-  }, [dirty, draftTheme, theme, draftAccent, accentColor, draftCalendar, settings, draftCardT, draftWidgetT, draftScale, draftWidgetScale, draftShowOnStartup, draftMorning, draftAutoLaunch, persistedAutoLaunch]);
+  }, [dirty, draftTheme, theme, draftAccent, accentColor, draftCalendar, settings, draftCardT, draftWidgetT, draftScale, draftWidgetScale, draftHandFont, draftFontFamily, draftFontSizes, draftBoldTitle, draftBoldSubtask, draftBoldDescription, draftLeading, draftShowOnStartup, draftMorning, draftAutoLaunch, persistedAutoLaunch]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -178,6 +209,15 @@ export function SettingsView() {
       if (draftWidgetT !== (settings.widgetTransparency || '0')) patch.widgetTransparency = draftWidgetT;
       if (draftScale !== (settings.uiScale || '100')) patch.uiScale = draftScale;
       if (draftWidgetScale !== (settings.widgetScale || '100')) patch.widgetScale = draftWidgetScale;
+      if (String(draftHandFont) !== String(settings.handFont === 'true')) patch.handFont = String(draftHandFont);
+      if (draftFontFamily !== (settings.fontFamily || 'kamran')) patch.fontFamily = draftFontFamily;
+      if (String(draftBoldTitle) !== String(settings.fontBoldTitle === 'true')) patch.fontBoldTitle = String(draftBoldTitle);
+      if (String(draftBoldSubtask) !== String(settings.fontBoldSubtask === 'true')) patch.fontBoldSubtask = String(draftBoldSubtask);
+      if (String(draftBoldDescription) !== String(settings.fontBoldDescription === 'true')) patch.fontBoldDescription = String(draftBoldDescription);
+      if (draftLeading !== (parseFloat(settings.lineHeight || '1.6'))) patch.lineHeight = String(draftLeading);
+      if (draftFontSizes.fontSizeTitle !== (parseInt(settings.fontSizeTitle || '14', 10))) patch.fontSizeTitle = String(draftFontSizes.fontSizeTitle);
+      if (draftFontSizes.fontSizeSubtask !== (parseInt(settings.fontSizeSubtask || '12', 10))) patch.fontSizeSubtask = String(draftFontSizes.fontSizeSubtask);
+      if (draftFontSizes.fontSizeDescription !== (parseInt(settings.fontSizeDescription || '12', 10))) patch.fontSizeDescription = String(draftFontSizes.fontSizeDescription);
       if (String(draftShowOnStartup) !== String(settings.showOnStartup !== 'false')) patch.showOnStartup = String(draftShowOnStartup);
       if (String(draftMorning) !== String(settings.morningNotification !== 'false')) patch.morningNotification = String(draftMorning);
       if (Object.keys(patch).length > 0) await updateSettings(patch);
@@ -202,6 +242,17 @@ export function SettingsView() {
     setDraftWidgetT(settings.widgetTransparency || '0');
     setDraftScale(settings.uiScale || '100');
     setDraftWidgetScale(settings.widgetScale || '100');
+    setDraftHandFont(settings.handFont === 'true');
+    setDraftFontFamily(settings.fontFamily || 'kamran');
+    setDraftBoldTitle(settings.fontBoldTitle === 'true');
+    setDraftBoldSubtask(settings.fontBoldSubtask === 'true');
+    setDraftBoldDescription(settings.fontBoldDescription === 'true');
+    setDraftLeading(parseFloat(settings.lineHeight || '1.6'));
+    setDraftFontSizes({
+      fontSizeTitle: parseInt(settings.fontSizeTitle || '14', 10),
+      fontSizeSubtask: parseInt(settings.fontSizeSubtask || '12', 10),
+      fontSizeDescription: parseInt(settings.fontSizeDescription || '12', 10),
+    });
     setDraftShowOnStartup(settings.showOnStartup !== 'false');
     setDraftMorning(settings.morningNotification !== 'false');
     setDraftAutoLaunch(persistedAutoLaunch);
@@ -376,6 +427,79 @@ export function SettingsView() {
                   </div>
                 </>
               )}
+
+              <h4 className="text-sm font-medium mb-2 mt-4">فونت</h4>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">فونت دستنویس (سابتسک‌ها و شرح)</span>
+                  <div className="flex gap-1">
+                    {([
+                      { value: 'kamran', label: 'کامران' },
+                      { value: 'digi', label: 'دیجی نگاره' },
+                    ] as const).map(f => (
+                      <button key={f.value} onClick={() => { setDraftFontFamily(f.value); setDraftHandFont(true); markDirty(); }}
+                        className={cn('px-3 py-1.5 rounded-lg border text-xs transition-all',
+                          draftHandFont && draftFontFamily === f.value
+                            ? 'border-primary bg-primary/10 text-foreground font-medium'
+                            : 'border-border bg-muted text-muted-foreground')}>
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {([
+                  { key: 'Title', label: 'عنوان تسک' },
+                  { key: 'Subtask', label: 'سابتسک‌ها' },
+                  { key: 'Description', label: 'شرح تسک' },
+                ] as const).map(b => {
+                  const val = b.key === 'Title' ? draftBoldTitle : b.key === 'Subtask' ? draftBoldSubtask : draftBoldDescription;
+                  const set = b.key === 'Title' ? setDraftBoldTitle : b.key === 'Subtask' ? setDraftBoldSubtask : setDraftBoldDescription;
+                  return (
+                    <div key={b.key} className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">متن توپر: {b.label}</span>
+                      <button onClick={() => { set(!val); markDirty(); }}
+                        className={cn('w-10 h-5 rounded-full transition-colors relative', val ? 'bg-primary' : 'bg-muted')}>
+                        <span className={cn('absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform', val ? 'right-0.5' : 'right-5')} />
+                      </button>
+                    </div>
+                  );
+                })}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-muted-foreground">فاصله خطوط</span>
+                    <span className="text-xs font-medium">{draftLeading.toFixed(1)}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={1.2}
+                    max={2.2}
+                    step={0.1}
+                    value={draftLeading}
+                    onChange={(e) => { setDraftLeading(Number(e.target.value)); markDirty(); }}
+                    className="w-full accent-primary"
+                  />
+                </div>
+                {([
+                  { key: 'fontSizeTitle', label: 'عنوان تسک', min: 11, max: 22, def: 14 },
+                  { key: 'fontSizeSubtask', label: 'سابتسک‌ها', min: 10, max: 20, def: 12 },
+                  { key: 'fontSizeDescription', label: 'شرح تسک', min: 10, max: 20, def: 12 },
+                ] as const).map(f => (
+                  <div key={f.key}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-muted-foreground">{f.label}</span>
+                      <span className="text-xs font-medium">{draftFontSizes[f.key]}px</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={f.min}
+                      max={f.max}
+                      value={draftFontSizes[f.key]}
+                      onChange={(e) => { setDraftFontSizes({ ...draftFontSizes, [f.key]: Number(e.target.value) }); markDirty(); }}
+                      className="w-full accent-primary"
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
 
             <div className="p-4 rounded-xl border border-border/50 bg-card">
@@ -556,6 +680,17 @@ export function SettingsView() {
             <p className="text-muted-foreground text-xs mt-2">سازنده: احمد نیکان</p>
             <a href="mailto:ahmad.nkn86@gmail.com" dir="ltr" className="text-primary text-xs hover:underline">ahmad.nkn86@gmail.com</a>
             <p className="text-muted-foreground text-[11px] mt-2">© ۲۰۲۶ — استفاده رایگان؛ انتشار به نام خود ممنوع</p>
+            <button
+              onClick={async () => {
+                const r: any = await window.electronAPI.openExternal('https://github.com/a-nikan/task-reminder/releases');
+                if (r?.success === false) showToast('باز نشد — لینک را دستی باز کنید', 'error');
+              }}
+              className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90"
+            >
+              <Download className="w-4 h-4" />
+              بروزرسانی برنامه
+            </button>
+            <p className="text-[11px] text-muted-foreground mt-2">نسخه‌های جدید را از گیت‌هاب دریافت کنید</p>
           </div>
         )}
       </div>

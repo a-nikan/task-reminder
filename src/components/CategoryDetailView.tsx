@@ -47,7 +47,7 @@ export function CategoryDetailView() {
                   className={cn('w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all',
                     task.status === 'done' ? 'bg-status-done border-status-done text-white' :
                     task.status === 'in_progress' ? 'border-status-progress text-status-progress' :
-                    'border-muted-foreground/30'
+                    'border-muted-foreground/60'
                   )}
                 >
                   {task.status === 'done' && <Check className="w-3 h-3" />}

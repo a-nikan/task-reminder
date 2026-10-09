@@ -17,6 +17,7 @@ export interface Task {
   time: string | null;
   reminder: string | null;
   reminder_offset: number;
+  reminder_interval: number;
   category_id: string | null;
   color: string | null;
   pinned: number;
@@ -59,6 +60,7 @@ export interface Reminder {
   snoozed_until: string | null;
   dismissed: number;
   fired_at?: string | null;
+  interval_minutes?: number | null;
   created_at: string;
 }
 

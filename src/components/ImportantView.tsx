@@ -4,7 +4,7 @@ import type { Task, TaskStatus } from '../types';
 import { TaskCard } from './TaskCard';
 import { BulkToolbar } from './BulkToolbar';
 import { useTaskSelection, useActiveReminders } from '../hooks/useTaskSelection';
-import { useCardSwap, swapCardOrder } from '../hooks/useCardSwap';
+import { useCardSwap } from '../hooks/useCardSwap';
 import { Star, StarIcon } from 'lucide-react';
 
 export function ImportantView() {
@@ -22,14 +22,24 @@ export function ImportantView() {
     await loadReminders();
   };
 
-  const { gridRef, animateSwap } = useCardSwap();
-  const handleSwap = (aId: string, bId: string) => animateSwap(async () => {
-    const a = tasks.find(t => t.id === aId);
-    const b = tasks.find(t => t.id === bId);
-    if (!a || !b) return;
-    await swapCardOrder(a, b);
-    await reload();
-  });
+  const { gridRef, indicatorRef, dropTargetRef, animateSwap, updateDropTarget, clearDropIndicator } = useCardSwap();
+  const handleDropTask = async (draggedId: string) => {
+    const t = dropTargetRef.current;
+    if (!t) return;
+    await animateSwap(async () => {
+      const ids = tasks.map(t => t.id);
+      const from = ids.indexOf(draggedId);
+      let to = ids.indexOf(t.targetId);
+      if (from < 0 || to < 0) return;
+      ids.splice(from, 1);
+      to = ids.indexOf(t.targetId);
+      if (!t.before) to += 1;
+      ids.splice(to, 0, draggedId);
+      await window.electronAPI.reorderTasks(ids);
+      await reload();
+    });
+    clearDropIndicator();
+  };
 
   const handleStatusChange = async (id: string, status: TaskStatus) => {
     await window.electronAPI.changeTaskStatus(id, status);
@@ -103,7 +113,12 @@ export function ImportantView() {
             <p className="text-sm text-muted-foreground">روی ستاره تسک‌ها کلیک کنید تا مهم شوند</p>
           </div>
         ) : (
-          <div ref={gridRef} data-swap-group="important" className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+          <div ref={gridRef} data-swap-group="important" className="relative grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+            <div
+              ref={indicatorRef}
+              className="absolute left-0 top-0 h-[3px] rounded-full bg-primary z-40 pointer-events-none"
+              style={{ display: 'none' }}
+            />
             {tasks.map(task => (
               <TaskCard
                 key={task.id}
@@ -116,11 +131,14 @@ export function ImportantView() {
                 selectionMode={selectionMode}
                 selected={selectedIds.includes(task.id)}
                 onToggleSelect={(t) => toggleSelect(t.id)}
+                onLongPressSelect={() => { if (!selectionMode) setSelectionMode(true); toggleSelect(task.id); }}
                 reminderAt={remindersMap[task.id] ?? (task as any).reminder ?? null}
                 onReminderChanged={loadReminders}
                 onTasksChanged={reload}
                 swapGroupId="important"
-                onSwapCards={handleSwap}
+                onDropTask={handleDropTask}
+                onDragMove={(x, y, id) => updateDropTarget(x, y, id)}
+                onDragEnd={clearDropIndicator}
               />
             ))}
           </div>

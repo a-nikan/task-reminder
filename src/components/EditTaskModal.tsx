@@ -38,6 +38,7 @@ export function EditTaskModal() {
         subtasks: (editingTask.subtasks || []).map(s => ({ ...s })),
         recurrence: editingTask.recurrence || '',
         reminderOffset: editingTask.reminder_offset || 0,
+        reminderInterval: (editingTask as any).reminder_interval || 0,
         widget: !!(editingTask as any).pinned,
       });
     }).catch(() => {
@@ -54,6 +55,7 @@ export function EditTaskModal() {
         subtasks: (editingTask.subtasks || []).map(s => ({ ...s })),
         recurrence: editingTask.recurrence || '',
         reminderOffset: editingTask.reminder_offset || 0,
+        reminderInterval: (editingTask as any).reminder_interval || 0,
         widget: !!(editingTask as any).pinned,
       });
     });
@@ -79,12 +81,14 @@ export function EditTaskModal() {
       subtasks: data.subtasks,
       recurrence: data.recurrence || null,
       reminder_offset: data.reminderOffset,
+      reminder_interval: data.reminderInterval || 0,
       pinned: data.widget ? 1 : 0,
     });
     const wasPinned = wasPinnedRef.current;
     wasPinnedRef.current = data.widget;
     if (data.widget && !wasPinned) await window.electronAPI.widgetOpen(editingTask.id);
     else if (!data.widget && wasPinned) await window.electronAPI.widgetClose(editingTask.id);
+    await window.electronAPI.setReminderInterval(editingTask.id, data.reminderInterval || 0);
     await scheduleReminderFromForm(
       editingTask.id,
       data,

@@ -16,9 +16,9 @@ export function setupNotifications(mainWindow: BrowserWindow | null): void {
     // Cancel previous active reminders for this task to avoid duplicates
     db.reminders.forEach(r => { if (r.task_id === taskId && !r.dismissed) r.dismissed = 1; });
     const id = `rem-${taskId}-${Date.now()}`;
-    db.reminders.push({ id, task_id: taskId, remind_at: remindAt, snoozed_until: null, dismissed: 0, created_at: new Date().toISOString() });
-    // Also mirror on task for easy display/sync
     const task = db.tasks.find((t: any) => t.id === taskId);
+    db.reminders.push({ id, task_id: taskId, remind_at: remindAt, snoozed_until: null, dismissed: 0, interval_minutes: (task as any)?.reminder_interval || null, created_at: new Date().toISOString() });
+    // Also mirror on task for easy display/sync
     if (task) {
       task.reminder = remindAt;
       task.updated_at = new Date().toISOString();
@@ -60,6 +60,19 @@ export function setupNotifications(mainWindow: BrowserWindow | null): void {
       }
     });
     return map;
+  });
+
+  ipcMain.handle('reminder:setInterval', (_event, taskId: string, minutes: number) => {
+    const db = getDatabase();
+    let touched = false;
+    (db.reminders || []).forEach(r => {
+      if (r.task_id === taskId && !r.dismissed) {
+        (r as any).interval_minutes = minutes > 0 ? minutes : null;
+        touched = true;
+      }
+    });
+    if (touched) saveDatabase();
+    return { success: true, touched };
   });
 
   ipcMain.handle('reminder:snooze', (_event, taskId: string, minutes: number) => {
@@ -115,11 +128,21 @@ function checkReminders(mainWindow: BrowserWindow | null): void {
           `یادآوری تسک${when ? `\n${when}` : ''}${task.date ? `\nتاریخ تسک: ${formatTaskDate(task.date, (db.settings as any)?.calendarType)}` : ''}${task.time ? ` ساعت ${task.time}` : ''}`,
           task.id
         );
-        reminder.fired_at = now;
+        const intervalMin = (reminder as any).interval_minutes || 0;
+        if (intervalMin > 0) {
+          // Repeat mode: re-arm for the next round instead of closing.
+          // Only an explicit cancel (or done/archived) stops the loop.
+          const nextTime = new Date(nowMs + intervalMin * 60 * 1000).toISOString();
+          reminder.snoozed_until = nextTime;
+          reminder.fired_at = null;
+          (task as any).reminder = nextTime;
+          (task as any).updated_at = now;
+        } else {
+          reminder.fired_at = now;
+        }
         dirty = true;
         mainWindow?.webContents.send('notification:action', { taskId: task.id, reminderId: reminder.id, title: task.title });
-      } else {
-        reminder.dismissed = 1;
+      } else {        reminder.dismissed = 1;
         if (task) {
           (task as any).reminder = null;
           (task as any).updated_at = now;

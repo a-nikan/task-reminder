@@ -5,7 +5,7 @@ import type { Task, TaskStatus } from '../types';
 import { TaskCard } from './TaskCard';
 import { BulkToolbar } from './BulkToolbar';
 import { useTaskSelection, useActiveReminders } from '../hooks/useTaskSelection';
-import { useCardSwap, swapCardOrder } from '../hooks/useCardSwap';
+import { useCardSwap } from '../hooks/useCardSwap';
 import { Calendar } from 'lucide-react';
 
 function EmptyState({ title, subtitle }: { title: string; subtitle?: string }) {
@@ -111,13 +111,7 @@ export function TodayView() {
     onDelete: handleDelete,
     onReminderChanged: loadReminders,
     onTasksChanged: reload,
-    onSwapCards: async (aId: string, bId: string) => {
-      const a = tasks.find(t => t.id === aId);
-      const b = tasks.find(t => t.id === bId);
-      if (!a || !b) return;
-      await swapCardOrder(a, b);
-      await reload();
-    },
+    onLongPressSelect: (t: Task) => { if (!selectionMode) setSelectionMode(true); toggleSelect(t.id); },
   };
 
   return (
@@ -193,7 +187,7 @@ export function TodayView() {
   );
 }
 
-function TaskSection({ title, status, tasks, onStatusChange, onToggleFavorite, onDelete, selectionMode, selectedIds, onToggleSelect, remindersMap, onReminderChanged, onTasksChanged, onSwapCards }: {
+function TaskSection({ title, status, tasks, onStatusChange, onToggleFavorite, onDelete, selectionMode, selectedIds, onToggleSelect, remindersMap, onReminderChanged, onTasksChanged, onLongPressSelect }: {
   title: string;
   status: TaskStatus;
   tasks: Task[];
@@ -206,11 +200,27 @@ function TaskSection({ title, status, tasks, onStatusChange, onToggleFavorite, o
   remindersMap: Record<string, string>;
   onReminderChanged: () => void;
   onTasksChanged: () => Promise<void>;
-  onSwapCards: (aId: string, bId: string) => Promise<void>;
+  onLongPressSelect: (t: Task) => void;
 }) {
-  const { gridRef, animateSwap } = useCardSwap();
+  const { gridRef, indicatorRef, dropTargetRef, animateSwap, updateDropTarget, clearDropIndicator } = useCardSwap();
   const swapGroupId = `today-${status}`;
-  const handleSwap = (aId: string, bId: string) => animateSwap(() => onSwapCards(aId, bId));
+  const handleDropTask = async (draggedId: string) => {
+    const t = dropTargetRef.current;
+    if (!t) return;
+    await animateSwap(async () => {
+      const ids = tasks.map(x => x.id);
+      const from = ids.indexOf(draggedId);
+      let to = ids.indexOf(t.targetId);
+      if (from < 0 || to < 0) return;
+      ids.splice(from, 1);
+      to = ids.indexOf(t.targetId);
+      if (!t.before) to += 1;
+      ids.splice(to, 0, draggedId);
+      await window.electronAPI.reorderTasks(ids);
+      await onTasksChanged();
+    });
+    clearDropIndicator();
+  };
   return (
     <div>
       <div className="flex items-center gap-2 mb-3">
@@ -218,7 +228,12 @@ function TaskSection({ title, status, tasks, onStatusChange, onToggleFavorite, o
         <h2 className="text-sm font-medium text-foreground">{title}</h2>
         <span className="text-xs text-muted-foreground">({tasks.length})</span>
       </div>
-      <div ref={gridRef} data-swap-group={swapGroupId} className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+      <div ref={gridRef} data-swap-group={swapGroupId} className="relative grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+        <div
+          ref={indicatorRef}
+          className="absolute left-0 top-0 h-[3px] rounded-full bg-primary z-40 pointer-events-none"
+          style={{ display: 'none' }}
+        />
         {tasks.map(task => (
           <TaskCard
             key={task.id}
@@ -233,7 +248,10 @@ function TaskSection({ title, status, tasks, onStatusChange, onToggleFavorite, o
             onReminderChanged={onReminderChanged}
             onTasksChanged={onTasksChanged}
             swapGroupId={swapGroupId}
-            onSwapCards={handleSwap}
+            onDropTask={handleDropTask}
+            onDragMove={(x, y, id) => updateDropTarget(x, y, id)}
+            onDragEnd={clearDropIndicator}
+            onLongPressSelect={onLongPressSelect}
           />
         ))}
       </div>

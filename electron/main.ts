@@ -119,6 +119,15 @@ app.whenReady().then(() => {
   setupWidgetIpc();
   restoreWidgets();
 
+  ipcMain.handle('shell:openExternal', async (_event, url: string) => {
+    try {
+      await shell.openExternal(String(url));
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: String(e) };
+    }
+  });
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();

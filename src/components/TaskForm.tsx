@@ -19,6 +19,7 @@ export interface TaskFormData {
   subtasks: Subtask[];
   recurrence: string;
   reminderOffset: number;
+  reminderInterval: number;
   widget: boolean;
 }
 
@@ -43,6 +44,7 @@ export function TaskForm({ initial, submitLabel, onSubmit, onCancel, autoSave, o
   const [taskTags, setTaskTags] = useState<string[]>(initial.tags);
   const [recurrence, setRecurrence] = useState(initial.recurrence);
   const [reminderOffset, setReminderOffset] = useState(initial.reminderOffset);
+  const [reminderInterval, setReminderInterval] = useState(initial.reminderInterval || 0);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [newTag, setNewTag] = useState('');
   const [subtasks, setSubtasks] = useState<Subtask[]>(initial.subtasks);
@@ -73,12 +75,13 @@ export function TaskForm({ initial, submitLabel, onSubmit, onCancel, autoSave, o
         subtasks,
         recurrence,
         reminderOffset,
+        reminderInterval,
         widget,
       });
     }, 800);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoSave, title, description, date, time, priority, categoryId, color, taskTags, subtasks, recurrence, reminderOffset, widget]);
+  }, [autoSave, title, description, date, time, priority, categoryId, color, taskTags, subtasks, recurrence, reminderOffset, reminderInterval, widget]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,6 +100,7 @@ export function TaskForm({ initial, submitLabel, onSubmit, onCancel, autoSave, o
         subtasks,
         recurrence,
         reminderOffset,
+        reminderInterval,
         widget,
       });
     } finally {
@@ -130,6 +134,17 @@ export function TaskForm({ initial, submitLabel, onSubmit, onCancel, autoSave, o
     setSubtasks(subtasks.filter(s => s.id !== id));
   };
 
+  const [editingSubId, setEditingSubId] = useState<string | null>(null);
+  const [editingSubTitle, setEditingSubTitle] = useState('');
+
+  const commitSubRename = () => {
+    const v = editingSubTitle.trim();
+    if (editingSubId && v) {
+      setSubtasks(subtasks.map(s => s.id === editingSubId ? { ...s, title: v } : s));
+    }
+    setEditingSubId(null);
+  };
+
   return (
     <form onSubmit={handleSubmit} className="p-4 overflow-y-auto">
       <div className="mb-4">
@@ -160,10 +175,30 @@ export function TaskForm({ initial, submitLabel, onSubmit, onCancel, autoSave, o
             {subtasks.map(st => (
               <div key={st.id} className="flex items-start gap-2 py-1 px-2 rounded-lg bg-muted/50">
                 {st.completed
-                  ? <Check className="w-3 h-3 text-status-done" />
-                  : <Check className="w-3 h-3 text-muted-foreground/50" />}
-                <span className="flex-1 text-xs">{st.title}</span>
-                <button type="button" onClick={() => handleRemoveSubtask(st.id)} className="text-muted-foreground hover:text-destructive">
+                  ? <Check className="w-3 h-3 text-status-done mt-0.5 shrink-0" />
+                  : <Check className="w-3 h-3 text-muted-foreground/50 mt-0.5 shrink-0" />}
+                {editingSubId === st.id ? (
+                  <input
+                    autoFocus
+                    value={editingSubTitle}
+                    onChange={(e) => setEditingSubTitle(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') commitSubRename();
+                      if (e.key === 'Escape') setEditingSubId(null);
+                    }}
+                    onBlur={commitSubRename}
+                    className="flex-1 min-w-0 text-xs bg-transparent border-b border-current px-0.5 focus:outline-none"
+                  />
+                ) : (
+                  <span
+                    onClick={() => { setEditingSubId(st.id); setEditingSubTitle(st.title); }}
+                    title="کلیک برای ویرایش"
+                    className="flex-1 min-w-0 break-words text-xs cursor-text"
+                  >
+                    {st.title}
+                  </span>
+                )}
+                <button type="button" onClick={() => handleRemoveSubtask(st.id)} className="text-muted-foreground hover:text-destructive shrink-0">
                   <X className="w-3 h-3" />
                 </button>
               </div>
@@ -198,6 +233,17 @@ export function TaskForm({ initial, submitLabel, onSubmit, onCancel, autoSave, o
           <label className="text-xs text-muted-foreground mb-1 flex items-center gap-1"><Clock className="w-3 h-3" />ساعت</label>
           <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="w-full px-2 py-1.5 rounded-lg bg-muted border border-border text-xs focus:outline-none" />
         </div>
+      </div>
+
+      <div className="mb-4">
+        <label className="text-xs text-muted-foreground mb-1 block">تکرار هشدار تا لغو</label>
+        <select value={reminderInterval} onChange={(e) => setReminderInterval(Number(e.target.value))} className="w-full px-2 py-1.5 rounded-lg bg-muted border border-border text-xs focus:outline-none">
+          <option value={0}>خاموش</option>
+          <option value={5}>هر ۵ دقیقه</option>
+          <option value={10}>هر ۱۰ دقیقه</option>
+          <option value={30}>هر ۳۰ دقیقه</option>
+          <option value={60}>هر ۱ ساعت</option>
+        </select>
       </div>
 
       <div className="mb-4">

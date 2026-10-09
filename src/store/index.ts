@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { Task, Category, Tag, Settings, TaskStats, ViewType, TaskStatus, TaskPriority, CalendarView } from '../types';
-import { applyAccentColor } from '../utils';
+import { applyAccentColor, applyFontSettings } from '../utils';
 
 declare global {
   interface Window {
@@ -51,6 +51,7 @@ declare global {
       getReminder: (taskId: string) => Promise<any>;
       getActiveReminders: () => Promise<Record<string, string>>;
       snoozeReminder: (taskId: string, minutes: number) => Promise<any>;
+      setReminderInterval: (taskId: string, minutes: number) => Promise<any>;
       onNewTask: (callback: () => void) => void;
       onNotificationAction: (callback: (data: { taskId: string; reminderId: string; title: string }) => void) => void;
       onOpenTask: (callback: (data: { taskId: string }) => void) => void;
@@ -72,6 +73,7 @@ declare global {
       addSubtask: (taskId: string, title: string) => Promise<Task>;
       removeSubtask: (taskId: string, subtaskId: string) => Promise<Task>;
       getLinkedTasks: (linkedId: string) => Promise<Task[]>;
+      openExternal: (url: string) => void;
     };
   }
 }
@@ -114,6 +116,7 @@ interface AppState {
   loadStats: () => Promise<void>;
 
   settings: Record<string, string>;
+  settingsLoaded: boolean;
   loadSettings: () => Promise<void>;
   updateSettings: (settings: Record<string, string>) => Promise<void>;
 
@@ -225,9 +228,11 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   settings: {},
+  settingsLoaded: false,
   loadSettings: async () => {
-    const settings = await window.electronAPI.getSettings();
-    const theme = (settings.theme as 'dark' | 'light' | 'system') || 'dark';
+    try {
+      const settings = await window.electronAPI.getSettings();
+      const theme = (settings.theme as 'dark' | 'light' | 'system') || 'dark';
 
     const applyTheme = (t: 'dark' | 'light') => {
       document.documentElement.classList.toggle('dark', t === 'dark');
@@ -240,18 +245,23 @@ export const useStore = create<AppState>((set, get) => ({
       applyTheme(theme);
     }
 
-    set({ settings, theme, accentColor: settings.accentColor || 'purple' });
+    set({ settings, theme, accentColor: settings.accentColor || 'purple', settingsLoaded: true });
     applyAccentColor(settings.accentColor || 'purple');
-  },
+    applyFontSettings(settings);
+  } catch {
+    set({ settingsLoaded: true });
+  }
+},
   updateSettings: async (newSettings) => {
     await window.electronAPI.updateSettings(newSettings);
     const settings = { ...get().settings, ...newSettings };
     if (newSettings.theme) {
-      document.documentElement.classList.toggle('dark', newSettings.theme === 'dark');
+      document.documentElement.classList.toggle('dark', newSettings.theme === 'light');
       set({ settings, theme: newSettings.theme as 'dark' | 'light' });
     } else {
       set({ settings });
     }
+    applyFontSettings({ ...get().settings, ...newSettings });
   },
 
   selectedTask: null,
