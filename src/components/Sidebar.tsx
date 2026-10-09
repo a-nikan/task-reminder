@@ -39,6 +39,8 @@ export function Sidebar() {
 
   const [appVersion, setAppVersion] = useState('');
   const [syncing, setSyncing] = useState(false);
+  // Manual LAN sync is a phone feature (desktop IS the server)
+  const isNative = typeof window !== 'undefined' && !!(window as any).Capacitor?.isNativePlatform?.();
 
   useEffect(() => {
     window.electronAPI.getVersion().then(v => setAppVersion(v)).catch(() => {});
@@ -162,6 +164,7 @@ export function Sidebar() {
               <span className="flex-1 text-right">{item.label}</span>
             </button>
           ))}
+          {isNative && (
           <button
             onClick={handleSync}
             className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-150 text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -169,6 +172,7 @@ export function Sidebar() {
             <RefreshCw className={cn('w-4 h-4', syncing && 'animate-spin')} />
             <span className="flex-1 text-right">{syncing ? 'در حال همگام‌سازی...' : 'همگام‌سازی'}</span>
           </button>
+          )}
         </div>
       </div>
 

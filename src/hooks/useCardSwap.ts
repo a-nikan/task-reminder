@@ -60,8 +60,8 @@ export function useCardSwap() {
       }
     }
     if (!pick) {
-      // Inside the grid but over a gap: snap to the nearest card edge
-      // (same group, excluding the dragged item) so drops stay forgiving
+      // Inside the grid but over a gap: snap to the nearest EDGE (not center)
+      // so the line always lands exactly on a border, even between items
       const gridRect = grid.getBoundingClientRect();
       if (clientX >= gridRect.left && clientX <= gridRect.right && clientY >= gridRect.top && clientY <= gridRect.bottom) {
         let best: HTMLElement | null = null;
@@ -71,11 +71,14 @@ export function useCardSwap() {
           const id = el.getAttribute('data-swap-id');
           if (!id || id === draggedId) return;
           const r = (el as HTMLElement).getBoundingClientRect();
-          const d = Math.hypot(clientX - (r.left + r.width / 2), clientY - (r.top + r.height / 2));
+          const dx = clientX < r.left ? r.left - clientX : clientX > r.right ? clientX - r.right : 0;
+          const dTop = Math.abs(clientY - r.top);
+          const dBottom = Math.abs(clientY - r.bottom);
+          const d = Math.min(dTop, dBottom) + dx;
           if (d < bestD) {
             bestD = d;
             best = el as HTMLElement;
-            bestBefore = clientY < r.top + r.height / 2;
+            bestBefore = dTop <= dBottom;
           }
         });
         if (best) pick = { el: best, before: bestBefore };
@@ -88,8 +91,9 @@ export function useCardSwap() {
     }
     const rect = pick.el.getBoundingClientRect();
     const gridRect = grid.getBoundingClientRect();
+    // -1px centers the 2-3px line exactly on the border
     const x = rect.left - gridRect.left;
-    const y = pick.before ? rect.top - gridRect.top : rect.bottom - gridRect.top;
+    const y = (pick.before ? rect.top : rect.bottom) - gridRect.top - 1;
     paintIndicator(x, y, rect.width);
     const res = { targetId: pick.el.getAttribute('data-swap-id') as string, before: pick.before };
     dropTargetRef.current = res;
@@ -195,11 +199,29 @@ export function useSwapDrag({ groupId, itemId, disabled, onDrop, onDragMove, onD
     end?.();
   };
 
+  // Backup: if pointer capture is lost mid-gesture (node replaced, touch
+  // interruption), the handle's own listeners may never fire. Window-level
+  // listeners guarantee the drag always finishes. finish() is idempotent.
+  useEffect(() => {
+    if (!dragging) return;
+    const onUp = () => finish(true);
+    const onCancel = () => finish(true);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onCancel);
+    return () => {
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onCancel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dragging]);
+
   const dragHandleProps = {
     onPointerDown: handlePointerDown,
     onPointerMove: handlePointerMove,
     onPointerUp: () => finish(true),
-    onPointerCancel: () => finish(false),
+    // Treat cancel as a drop too: a real hover target must exist for anything
+    // to happen (otherwise no-op), and on touch this is what actually fires.
+    onPointerCancel: () => finish(true),
     onClick: (e: React.SyntheticEvent) => e.stopPropagation(),
     onContextMenu: (e: React.SyntheticEvent) => e.preventDefault(),
   };
