@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../store';
-import { cn, TRANSPARENCY_STEPS, applyAccentColor } from '../utils';
+import { cn, TRANSPARENCY_STEPS, applyAccentColor, defaultUiScale } from '../utils';
 import { Sun, Moon, Monitor, Download, Upload, Keyboard, Info, Bell, Palette, Check, Trash2, Save, X, Loader2, RefreshCw, Wifi, Copy } from 'lucide-react';
 import {
   syncNow as lanSyncNow,
@@ -59,7 +59,7 @@ export function SettingsView() {
   const [draftCalendar, setDraftCalendar] = useState(settings.calendarType || 'gregorian');
   const [draftCardT, setDraftCardT] = useState(settings.cardTransparency || '0');
   const [draftWidgetT, setDraftWidgetT] = useState(settings.widgetTransparency || '0');
-  const [draftScale, setDraftScale] = useState(settings.uiScale || '100');
+  const [draftScale, setDraftScale] = useState(settings.uiScale || defaultUiScale());
   const [draftWidgetScale, setDraftWidgetScale] = useState(settings.widgetScale || '100');
   const [draftHandFont, setDraftHandFont] = useState(settings.handFont === 'true');
   const [draftFontFamily, setDraftFontFamily] = useState(settings.fontFamily || 'kamran');
@@ -142,7 +142,7 @@ export function SettingsView() {
     setDraftCalendar(settings.calendarType || 'gregorian');
     setDraftCardT(settings.cardTransparency || '0');
     setDraftWidgetT(settings.widgetTransparency || '0');
-    setDraftScale(settings.uiScale || '100');
+    setDraftScale(settings.uiScale || defaultUiScale());
     setDraftWidgetScale(settings.widgetScale || '100');
     setDraftHandFont(settings.handFont === 'true');
     setDraftFontFamily(settings.fontFamily || 'kamran');
@@ -180,7 +180,7 @@ export function SettingsView() {
       draftCalendar !== (settings.calendarType || 'gregorian') ||
       draftCardT !== (settings.cardTransparency || '0') ||
       draftWidgetT !== (settings.widgetTransparency || '0') ||
-      draftScale !== (settings.uiScale || '100') ||
+      draftScale !== (settings.uiScale || defaultUiScale()) ||
       draftWidgetScale !== (settings.widgetScale || '100') ||
       String(draftHandFont) !== String(settings.handFont === 'true') ||
       draftFontFamily !== (settings.fontFamily || 'kamran') ||
@@ -207,7 +207,7 @@ export function SettingsView() {
       if (draftCalendar !== (settings.calendarType || 'gregorian')) patch.calendarType = draftCalendar;
       if (draftCardT !== (settings.cardTransparency || '0')) patch.cardTransparency = draftCardT;
       if (draftWidgetT !== (settings.widgetTransparency || '0')) patch.widgetTransparency = draftWidgetT;
-      if (draftScale !== (settings.uiScale || '100')) patch.uiScale = draftScale;
+      if (draftScale !== (settings.uiScale || defaultUiScale())) patch.uiScale = draftScale;
       if (draftWidgetScale !== (settings.widgetScale || '100')) patch.widgetScale = draftWidgetScale;
       if (String(draftHandFont) !== String(settings.handFont === 'true')) patch.handFont = String(draftHandFont);
       if (draftFontFamily !== (settings.fontFamily || 'kamran')) patch.fontFamily = draftFontFamily;
@@ -240,7 +240,7 @@ export function SettingsView() {
     setDraftCalendar(settings.calendarType || 'gregorian');
     setDraftCardT(settings.cardTransparency || '0');
     setDraftWidgetT(settings.widgetTransparency || '0');
-    setDraftScale(settings.uiScale || '100');
+    setDraftScale(settings.uiScale || defaultUiScale());
     setDraftWidgetScale(settings.widgetScale || '100');
     setDraftHandFont(settings.handFont === 'true');
     setDraftFontFamily(settings.fontFamily || 'kamran');

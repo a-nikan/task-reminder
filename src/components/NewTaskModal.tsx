@@ -22,6 +22,7 @@ export function NewTaskModal() {
     recurrence: '',
     reminderOffset: 0,
     reminderInterval: 0,
+    reminderEnabled: true,
     widget: false,
   };
 
@@ -43,7 +44,9 @@ export function NewTaskModal() {
       status: 'todo' as const,
     });
     if (created?.id) {
-      await scheduleReminderFromForm(created.id, data, false);
+      if (data.reminderEnabled !== false) {
+        await scheduleReminderFromForm(created.id, data, false);
+      }
       if (data.widget) await window.electronAPI.widgetOpen(created.id);
     }
     showToast('تسک ایجاد شد');

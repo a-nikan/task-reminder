@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store';
 import { cn, getToday, getTomorrow, RECURRENCE_OPTIONS, REMINDER_OPTIONS, parseNaturalLanguage } from '../utils';
 import type { Task, TaskPriority, Subtask } from '../types';
-import { Calendar, Clock, Flag, Tag, Folder, Repeat, Sparkles, Plus, Check, X, Palette, Pin } from 'lucide-react';
+import { Calendar, Clock, Flag, Tag, Folder, Repeat, Sparkles, Plus, Check, X, Palette, Pin, Bell } from 'lucide-react';
 import { DateInput } from './DateInput';
 import { ColorSwatches } from './ColorSwatches';
 import { v4 as uuidv4 } from 'uuid';
@@ -20,6 +20,7 @@ export interface TaskFormData {
   recurrence: string;
   reminderOffset: number;
   reminderInterval: number;
+  reminderEnabled: boolean;
   widget: boolean;
 }
 
@@ -45,6 +46,7 @@ export function TaskForm({ initial, submitLabel, onSubmit, onCancel, autoSave, o
   const [recurrence, setRecurrence] = useState(initial.recurrence);
   const [reminderOffset, setReminderOffset] = useState(initial.reminderOffset);
   const [reminderInterval, setReminderInterval] = useState(initial.reminderInterval || 0);
+  const [reminderEnabled, setReminderEnabled] = useState(initial.reminderEnabled !== false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [newTag, setNewTag] = useState('');
   const [subtasks, setSubtasks] = useState<Subtask[]>(initial.subtasks);
@@ -76,12 +78,13 @@ export function TaskForm({ initial, submitLabel, onSubmit, onCancel, autoSave, o
         recurrence,
         reminderOffset,
         reminderInterval,
+        reminderEnabled,
         widget,
       });
     }, 800);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoSave, title, description, date, time, priority, categoryId, color, taskTags, subtasks, recurrence, reminderOffset, reminderInterval, widget]);
+  }, [autoSave, title, description, date, time, priority, categoryId, color, taskTags, subtasks, recurrence, reminderOffset, reminderInterval, reminderEnabled, widget]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,6 +104,7 @@ export function TaskForm({ initial, submitLabel, onSubmit, onCancel, autoSave, o
         recurrence,
         reminderOffset,
         reminderInterval,
+        reminderEnabled,
         widget,
       });
     } finally {
@@ -230,11 +234,22 @@ export function TaskForm({ initial, submitLabel, onSubmit, onCancel, autoSave, o
           </div>
         </div>
         <div>
-          <label className="text-xs text-muted-foreground mb-1 flex items-center gap-1"><Clock className="w-3 h-3" />ساعت</label>
+          <div className="mb-1 flex items-center justify-between">
+            <label className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="w-3 h-3" />ساعت</label>
+            <button type="button" onClick={() => setReminderEnabled(!reminderEnabled)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+              <Bell className="w-3 h-3" />
+              هشدار
+              <span className={cn('w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0',
+                reminderEnabled ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground/40')}>
+                {reminderEnabled && <Check className="w-2.5 h-2.5" />}
+              </span>
+            </button>
+          </div>
           <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="w-full px-2 py-1.5 rounded-lg bg-muted border border-border text-xs focus:outline-none" />
         </div>
       </div>
 
+      {reminderEnabled && (
       <div className="mb-4">
         <label className="text-xs text-muted-foreground mb-1 block">تکرار هشدار تا لغو</label>
         <select value={reminderInterval} onChange={(e) => setReminderInterval(Number(e.target.value))} className="w-full px-2 py-1.5 rounded-lg bg-muted border border-border text-xs focus:outline-none">
@@ -245,6 +260,7 @@ export function TaskForm({ initial, submitLabel, onSubmit, onCancel, autoSave, o
           <option value={60}>هر ۱ ساعت</option>
         </select>
       </div>
+      )}
 
       <div className="mb-4">
         <label className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1"><Flag className="w-3 h-3" />اولویت</label>

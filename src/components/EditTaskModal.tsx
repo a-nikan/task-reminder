@@ -39,6 +39,7 @@ export function EditTaskModal() {
         recurrence: editingTask.recurrence || '',
         reminderOffset: editingTask.reminder_offset || 0,
         reminderInterval: (editingTask as any).reminder_interval || 0,
+        reminderEnabled: !!active,
         widget: !!(editingTask as any).pinned,
       });
     }).catch(() => {
@@ -56,6 +57,7 @@ export function EditTaskModal() {
         recurrence: editingTask.recurrence || '',
         reminderOffset: editingTask.reminder_offset || 0,
         reminderInterval: (editingTask as any).reminder_interval || 0,
+        reminderEnabled: false,
         widget: !!(editingTask as any).pinned,
       });
     });
@@ -89,13 +91,19 @@ export function EditTaskModal() {
     if (data.widget && !wasPinned) await window.electronAPI.widgetOpen(editingTask.id);
     else if (!data.widget && wasPinned) await window.electronAPI.widgetClose(editingTask.id);
     await window.electronAPI.setReminderInterval(editingTask.id, data.reminderInterval || 0);
-    await scheduleReminderFromForm(
-      editingTask.id,
-      data,
-      hadActiveReminderRef.current,
-      lastDateTimeRef.current,
-      data.reminderOffset !== lastOffsetRef.current
-    );
+    if (data.reminderEnabled === false) {
+      const active = await window.electronAPI.getReminder(editingTask.id).catch(() => null);
+      if (active) await window.electronAPI.cancelReminder(editingTask.id);
+      hadActiveReminderRef.current = false;
+    } else {
+      await scheduleReminderFromForm(
+        editingTask.id,
+        data,
+        hadActiveReminderRef.current,
+        lastDateTimeRef.current,
+        data.reminderOffset !== lastOffsetRef.current
+      );
+    }
     const r = await window.electronAPI.getReminder(editingTask.id).catch(() => null);
     hadActiveReminderRef.current = !!(r as any)?.remind_at;
     lastDateTimeRef.current = data.date && data.time ? `${data.date}T${data.time}` : null;

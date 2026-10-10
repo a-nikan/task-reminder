@@ -21,6 +21,7 @@ import { Toast } from './components/Toast';
 import { ReminderAlert } from './components/ReminderAlert';
 import { TaskWidget } from './components/TaskWidget';
 import { syncNow as lanSyncNow } from './platform/lanSync';
+import { effectiveUiScale } from './utils';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { Onboarding } from './components/Onboarding';
 
@@ -122,7 +123,7 @@ export default function App() {
 
   useEffect(() => {
     if (window.location.hash.match(/^#\/?widget\//)) return;
-    const s = parseInt(settings.uiScale || '100', 10);
+    const s = parseInt(effectiveUiScale(settings), 10);
     const z = isNaN(s) ? 1 : Math.min(2, Math.max(0.5, s / 100));
     const root = document.getElementById('root');
     if (root) {

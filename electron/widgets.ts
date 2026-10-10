@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, screen } from 'electron';
+import { app, BrowserWindow, ipcMain, screen, Menu } from 'electron';
 import path from 'path';
 import { getDatabase, saveDatabase } from './database';
 
@@ -71,6 +71,22 @@ function clamp(v: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, v));
 }
 
+/** Right-click menu (cut/copy/paste/select-all) inside widget windows. */
+function setupWidgetContextMenu(win: BrowserWindow): void {
+  win.webContents.on('context-menu', (_event, params) => {
+    const { editFlags, selectionText } = params;
+    const items: any[] = [];
+    if (editFlags.canCut) items.push({ label: 'برش', click: () => win.webContents.cut() });
+    if (editFlags.canCopy || (selectionText && !editFlags.canCopy)) {
+      items.push({ label: 'کپی', click: () => win.webContents.copy() });
+    }
+    if (editFlags.canPaste) items.push({ label: 'چسباندن', click: () => win.webContents.paste() });
+    if (editFlags.canSelectAll) items.push({ label: 'انتخاب همه', click: () => win.webContents.selectAll() });
+    if (items.length === 0) return;
+    Menu.buildFromTemplate(items).popup();
+  });
+}
+
 export function openTaskWidget(taskId: string): { success: boolean; reason?: string } {
   const existing = widgetWindows.get(taskId);
   if (existing && !existing.isDestroyed()) {
@@ -128,7 +144,7 @@ export function openTaskWidget(taskId: string): { success: boolean; reason?: str
   win.once('ready-to-show', () => {
     if (!win.isDestroyed()) win.show();
   });
-  const persist = () => saveGeometry(taskId, win);
+  setupWidgetContextMenu(win);  const persist = () => saveGeometry(taskId, win);
   const notifyMain = () => {
     try {
       if (mainWindowRef && !mainWindowRef.isDestroyed()) {

@@ -8,6 +8,7 @@ import type { DatabaseSchema, Task } from '../../shared/types';
 import { createEmptyDb, migrateDatabase, seedDefaultData } from '../../shared/migrate';
 import { nowIso, mergeImportedData, makeSnapshot, applySnapshot } from '../../shared/sync';
 import * as ops from '../../shared/operations';
+import { syncNow as lanSyncNow } from './lanSync';
 import { useStore } from '../store';
 
 const DB_FILE = 'taskreminder.json';
@@ -339,6 +340,9 @@ async function registerListeners(): Promise<void> {
         await save();
         await rescheduleAll();
       });
+      // Sync with the server on resume (outside the DB queue: syncNow
+      // uses the queued APIs itself, nesting would deadlock)
+      void lanSyncNow().catch(() => {});
     }
   });
 

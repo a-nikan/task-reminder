@@ -70,6 +70,29 @@ function createWindow(): void {
     setWidgetMainWindow(null);
   });
   setWidgetMainWindow(mainWindow);
+  setupTextContextMenu(mainWindow);
+}
+
+/** Right-click menu (cut/copy/paste/select-all) for inputs and selected text. */
+export function setupTextContextMenu(win: BrowserWindow): void {
+  win.webContents.on('context-menu', (_event, params) => {
+    const { editFlags, selectionText } = params;
+    const items: any[] = [];
+    if (editFlags.canCut) items.push({
+      label: 'برش', click: () => win.webContents.cut(),
+    });
+    if (editFlags.canCopy || (selectionText && !editFlags.canCopy)) items.push({
+      label: 'کپی', click: () => win.webContents.copy(),
+    });
+    if (editFlags.canPaste) items.push({
+      label: 'چسباندن', click: () => win.webContents.paste(),
+    });
+    if (editFlags.canSelectAll) items.push({
+      label: 'انتخاب همه', click: () => win.webContents.selectAll(),
+    });
+    if (items.length === 0) return;
+    Menu.buildFromTemplate(items).popup();
+  });
 }
 
 function createTray(): void {

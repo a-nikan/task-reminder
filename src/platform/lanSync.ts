@@ -174,7 +174,7 @@ export function initAutoSync(): void {
   useStore.subscribe(() => {
     if (!address || !token || syncing) return;
     if (changeTimer) clearTimeout(changeTimer);
-    changeTimer = setTimeout(() => { void syncNow(); }, 15000);
+    changeTimer = setTimeout(() => { void syncNow(); }, 4000);
   });
 
   document.addEventListener('visibilitychange', () => {
@@ -188,5 +188,5 @@ export function initAutoSync(): void {
   // Pull changes made on the other device while this one sits idle
   setInterval(() => {
     if (address && token && !syncing && document.visibilityState === 'visible') void syncNow();
-  }, 120000);
+  }, 45000);
 }

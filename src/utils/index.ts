@@ -348,6 +348,19 @@ export function applyFontSettings(settings: Record<string, string> | undefined):
   r.setProperty('--text-leading', String(isNaN(lh) ? 1.6 : Math.min(2.2, Math.max(1.2, lh))));
 }
 
+export function isNativeApp(): boolean {
+  return typeof window !== 'undefined' && !!(window as any).Capacitor?.isNativePlatform?.();
+}
+
+/** Platform default UI scale (never auto-stored; only explicit picks are saved). */
+export function defaultUiScale(): string {
+  return isNativeApp() ? '125' : '100';
+}
+
+export function effectiveUiScale(settings: Record<string, string> | undefined): string {
+  return settings?.uiScale || defaultUiScale();
+}
+
 export const TRANSPARENCY_STEPS = [0, 20, 40, 60, 80];export const CARD_TRANSPARENCY_KEY = 'cardTransparency';
 export const WIDGET_TRANSPARENCY_KEY = 'widgetTransparency';
 
